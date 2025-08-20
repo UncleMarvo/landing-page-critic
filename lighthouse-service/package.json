@@ -1,0 +1,15 @@
+{
+    "name": "lighthouse-service",
+    "version": "1.0.0",
+    "main": "index.js",
+    "type": "module",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "chrome-launcher": "^1.1.0",
+        "cors": "^2.8.5",
+        "express": "^4.18.2",
+        "lighthouse": "^11.0.0"
+    }
+}
