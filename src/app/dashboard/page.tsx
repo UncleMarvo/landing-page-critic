@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { format, subDays } from "date-fns";
 import { useResults } from "@/context/ResultsContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,12 @@ import {
   Tooltip,
   ResponsiveContainer,
   Cell,
+  LineChart,
+  Line,
+  Legend,
 } from "recharts";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 interface LighthouseCategory {
   id: string;
@@ -37,6 +43,11 @@ export default function Dashboard() {
   const [detailedRecommendations, setDetailedRecommendations] = useState<any[]>(
     []
   );
+  const [history, setHistory] = useState<any[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
+  // Date range state
+  const [startDate, setStartDate] = useState(subDays(new Date(), 30)); // default 30 days back
+  const [endDate, setEndDate] = useState(new Date());
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600";
@@ -132,9 +143,9 @@ export default function Dashboard() {
 
     // ----- Web Vitals -----
     const getNumeric = (id: string, fallback = 0) => {
-      console.log(
-        `*** DEBUG - ID: ${id} Value: ${audits?.[id]?.numericValue} Display Value: ${audits?.[id]?.displayValue}`
-      );
+      // console.log(
+      //   `*** DEBUG - ID: ${id} Value: ${audits?.[id]?.numericValue} Display Value: ${audits?.[id]?.displayValue}`
+      // );
       const value = audits?.[id]?.numericValue ?? fallback;
       return value;
     };
@@ -174,7 +185,7 @@ export default function Dashboard() {
       },
       {
         id: "si",
-        title: "Speed Index",   
+        title: "Speed Index",
         legend: "SI",
         value: getNumeric("speed-index"),
         unit: "ms",
@@ -198,7 +209,26 @@ export default function Dashboard() {
       .sort((a, b) => b.savingsMs - a.savingsMs)
       .slice(0, 5);
     setOpportunities(opps);
+
+    // ----- History -----
+    const fetchHistory = async () => {
+      const history = await fetch("/api/history");
+      const historyData = await history.json();
+      setHistory(historyData);
+    };
+    fetchHistory();
   }, []);
+
+  useEffect(() => {
+    const filterHistory = async () => {
+      const filteredHistory = history.filter((entry: any) => {
+        const analyzed = new Date(entry.analyzedAt);
+        return analyzed >= startDate && analyzed <= endDate;
+      });
+      setFilteredHistory(filteredHistory);
+    };
+    filterHistory();
+  }, [startDate, endDate]);
 
   return (
     <div className="p-6 space-y-6">
@@ -454,6 +484,95 @@ export default function Dashboard() {
               ))}
             </tbody>
           </table>
+        </CardContent>
+      </Card>
+
+      {/* History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold">
+            History
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {/* Date Range Picker */}
+          <div className="flex space-x-2 items-center mb-4">
+            <span>From:</span>
+            <DatePicker
+              selected={startDate}
+              onChange={(date: Date | null) => date && setStartDate(date)}
+              selectsStart
+              startDate={startDate}
+              endDate={endDate}
+              maxDate={new Date()}
+              dateFormat="MMM d, yyyy"
+              className="border px-2 py-1 rounded"
+            />
+            <span>To:</span>
+            <DatePicker
+              selected={endDate}
+              onChange={(date: Date | null) => date && setEndDate(date)}
+              selectsEnd
+              startDate={startDate}
+              endDate={endDate}
+              minDate={startDate}
+              maxDate={new Date()}
+              dateFormat="MMM d, yyyy"
+              className="border px-2 py-1 rounded"
+            />
+
+            <div className="flex space-x-2">
+              <button
+                className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
+                onClick={() => {
+                  setStartDate(subDays(new Date(), 7));
+                  setEndDate(new Date());
+                }}
+              >
+                Last 7 days
+              </button>
+              <button
+                className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
+                onClick={() => {
+                  setStartDate(subDays(new Date(), 30));
+                  setEndDate(new Date());
+                }}
+              >
+                Last 30 days
+              </button>
+              <button
+                className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
+                onClick={() => {
+                  setStartDate(new Date(0)); // epoch start
+                  setEndDate(new Date());
+                }}
+              >
+                All-time
+              </button>
+            </div>
+          </div>
+
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={filteredHistory}>
+              <XAxis
+                dataKey="analyzedAt"
+                tickFormatter={
+                  (value: string) => format(new Date(value), "MMM d, HH:mm") // e.g. "Aug 20, 18:30"
+                }
+              />
+              <YAxis />
+              <Tooltip
+                labelFormatter={
+                  (value: string) => format(new Date(value), "MMM d, HH:mm") // tooltip label, e.g. "Aug 20, 2025, 6:30 PM"
+                }
+              />
+              <Legend />
+              <Line dataKey="performance" stroke="#4f46e5" />
+              <Line dataKey="accessibility" stroke="#10b981" />
+              <Line dataKey="seo" stroke="#f59e0b" />
+              <Line dataKey="bestPractices" stroke="#ef4444" />
+            </LineChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>
