@@ -21,8 +21,6 @@ export async function GET() {
       },
     });
 
-    console.log("*** DEBUG - results: ", JSON.stringify(results, null, 2));
-
     return NextResponse.json(results);
   } catch (err) {
     console.error("Error fetching history:", err);

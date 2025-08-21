@@ -36,15 +36,18 @@ interface WebVital {
 
 export default function Dashboard() {
   const { result } = useResults();
+  // history
+  const [history, setHistory] = useState<any[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
+  // lighthouse results
   const [categories, setCategories] = useState<LighthouseCategory[]>([]);
   const [webVitals, setWebVitals] = useState<WebVital[]>([]);
   const [opportunities, setOpportunities] = useState<any[]>([]);
-  const [accessibilityIssues, setAccessibilityIssues] = useState<any[]>([]);
-  const [detailedRecommendations, setDetailedRecommendations] = useState<any[]>(
-    []
-  );
-  const [history, setHistory] = useState<any[]>([]);
-  const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [accessibility, setAccessibility] = useState<any[]>([]);
+  const [bestPractices, setBestPractices] = useState<any[]>([]);
+  const [seo, setSeo] = useState<any[]>([]);
+  const [performanceDetails, setPerformanceDetails] = useState<any[]>([]);
   // Date range state
   const [startDate, setStartDate] = useState(subDays(new Date(), 30)); // default 30 days back
   const [endDate, setEndDate] = useState(new Date());
@@ -96,121 +99,17 @@ export default function Dashboard() {
       return;
     }
 
-    const lhr = result?.lhr ?? result ?? {};
-    const audits = lhr.audits ?? {};
-    const categoriesObj = lhr.categories ?? {};
+    // ----- Lighthouse results -----
+    setCategories(result.categories);
+    setWebVitals(result.webVitals);
+    setOpportunities(result.opportunities);
+    setRecommendations(result.recommendations);
+    setAccessibility(result.accessibility);
+    setBestPractices(result.bestPractices);
+    setSeo(result.seo);
+    setPerformanceDetails(result.performanceDetails);
 
-    // ----- Category scores -----
-    const cats: LighthouseCategory[] = Object.values(categoriesObj).map(
-      (c: any) => ({
-        id: c.id,
-        title: c.title,
-        score: Math.round((c.score || 0) * 100),
-      })
-    );
-    setCategories(cats);
-
-    // ----- Accessibility issues (only accessibility category) -----
-    const accRefs = categoriesObj.accessibility?.auditRefs ?? [];
-    const accIssues = accRefs
-      .map((ref: any) => audits[ref.id])
-      .filter(
-        (a: any) =>
-          a &&
-          a.score !== 1 &&
-          a.scoreDisplayMode !== "notApplicable" &&
-          a.scoreDisplayMode !== "informative" // skip purely informational entries
-      )
-      .map((a: any) => ({
-        id: a.id,
-        title: a.title,
-        description: a.description,
-        displayValue: a.displayValue ?? null,
-      }))
-      .slice(0, 5);
-    setAccessibilityIssues(accIssues);
-
-    // ----- Detailed Recommendations -----
-    const detailedRecommendations = Object.values(audits)
-      .filter((a: any) => a.score !== 1 && a.details?.type !== "opportunity")
-      .map((a: any) => ({
-        id: a.id,
-        title: a.title,
-        description: a.description,
-      }))
-      .slice(0, 10);
-    setDetailedRecommendations(detailedRecommendations);
-
-    // ----- Web Vitals -----
-    const getNumeric = (id: string, fallback = 0) => {
-      // console.log(
-      //   `*** DEBUG - ID: ${id} Value: ${audits?.[id]?.numericValue} Display Value: ${audits?.[id]?.displayValue}`
-      // );
-      const value = audits?.[id]?.numericValue ?? fallback;
-      return value;
-    };
-
-    const vitals: WebVital[] = [
-      {
-        id: "fcp",
-        title: "First Contentful Paint",
-        legend: "FCP",
-        value: getNumeric("first-contentful-paint"),
-        unit: "ms",
-        level: classifyVital("fcp", getNumeric("first-contentful-paint")),
-      },
-      {
-        id: "lcp",
-        title: "Largest Contentful Paint",
-        legend: "LCP",
-        value: getNumeric("largest-contentful-paint"),
-        unit: "ms",
-        level: classifyVital("lcp", getNumeric("largest-contentful-paint")),
-      },
-      {
-        id: "cls",
-        title: "Cumulative Layout Shift",
-        legend: "CLS",
-        value: getNumeric("cumulative-layout-shift"),
-        unit: "",
-        level: classifyVital("cls", getNumeric("cumulative-layout-shift")),
-      },
-      {
-        id: "tbt",
-        title: "Total Blocking Time",
-        legend: "TBT",
-        value: getNumeric("total-blocking-time"),
-        unit: "ms",
-        level: classifyVital("tbt", getNumeric("total-blocking-time")),
-      },
-      {
-        id: "si",
-        title: "Speed Index",
-        legend: "SI",
-        value: getNumeric("speed-index"),
-        unit: "ms",
-        level: classifyVital("si", getNumeric("speed-index")),
-      },
-    ];
-    setWebVitals(vitals);
-
-    // ----- Top opportunities (non-zero) -----
-    const opps = Object.values(audits)
-      .filter(
-        (a: any) =>
-          a?.details?.type === "opportunity" &&
-          Math.round(a.details.overallSavingsMs || 0) !== 0
-      )
-      .map((a: any) => ({
-        id: a.id,
-        title: a.title,
-        savingsMs: Math.round(a.details.overallSavingsMs || 0),
-      }))
-      .sort((a, b) => b.savingsMs - a.savingsMs)
-      .slice(0, 5);
-    setOpportunities(opps);
-
-    // ----- History -----
+    // ----- DatabaseHistory -----
     const fetchHistory = async () => {
       const history = await fetch("/api/history");
       const historyData = await history.json();
@@ -430,7 +329,7 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {accessibilityIssues.map((a: any) => (
+              {accessibility.map((a: any) => (
                 <tr key={a.id} className="border-t">
                   <td className="p-2 font-medium">{a.title}</td>
                   <td className="p-2 text-muted-foreground">{a.description}</td>
@@ -450,7 +349,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <ul className="list-disc list-inside space-y-2">
-            {detailedRecommendations.map((a: any) => (
+            {recommendations.map((a: any) => (
               <li key={a.id}>
                 <span className="font-semibold">{a.title}: </span>
                 <span className="text-muted-foreground">{a.description}</span>

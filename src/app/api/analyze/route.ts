@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   fetchLighthouseResults,
+  extractCategories,
   extractWebVitals,
   extractOpportunities,
   extractRecommendations,
   extractAccessibility,
+  extractBestPractices,
+  extractSEO,
+  extractPerformanceDetails,
 } from "@/lib/lighthouse";
 import { prisma } from "@/lib/prisma";
 
@@ -22,16 +26,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const categories = lhr.categories;
+    const categories = await extractCategories(lhr);
     const webVitals = await extractWebVitals(lhr);
     const opportunities = await extractOpportunities(lhr.audits);
     const recommendations = await extractRecommendations(lhr.audits);
     const accessibility = await extractAccessibility(lhr);
+    const bestPractices = await extractBestPractices(lhr);
+    const seo = await extractSEO(lhr);
+    const performanceDetails = await extractPerformanceDetails(lhr);
 
-    const performanceScore = Math.round((categories.performance?.score || 0) * 100);
-    const accessibilityScore = Math.round((categories.accessibility?.score || 0) * 100);
-    const seoScore = Math.round((categories.seo?.score || 0) * 100);
-    const bestPracticesScore = Math.round((categories["best-practices"]?.score || 0) * 100);
+    const performanceScore = Math.round((lhr.categories?.performance?.score || 0) * 100);
+    const accessibilityScore = Math.round((lhr.categories?.accessibility?.score || 0) * 100);
+    const seoScore = Math.round((lhr.categories?.seo?.score || 0) * 100);
+    const bestPracticesScore = Math.round((lhr.categories?.["best-practices"]?.score || 0) * 100);
 
     // ----- Store in DB -----
 
@@ -54,7 +61,18 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ url, lhr });
+    return NextResponse.json({ 
+      url,
+      analyzedAt: new Date(),
+      categories,
+      webVitals,
+      opportunities,
+      recommendations,
+      accessibility,
+      bestPractices, 
+      seo, 
+      performanceDetails 
+    });
 
   } catch (error: any) {
     console.error("Analyze API error:", error);

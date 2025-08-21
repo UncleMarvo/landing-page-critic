@@ -26,6 +26,19 @@ export async function fetchLighthouseResults(url: string) {
   }
 }
 
+// ----- Categories extraction -----
+export function extractCategories(lhr: any) {
+  if (!lhr?.categories) return [];
+
+  return Object.values(lhr.categories)
+    .map((c: any) => ({
+      id: c.id,
+      title: c.title,
+      score: Math.round((c.score || 0) * 100),
+    }))
+    .sort((a, b) => b.score - a.score);
+}
+
 // ----- Web Vitals extraction -----
 export function extractWebVitals(lhr: any) {
   if (!lhr) return []; // ✅ handle empty db / no audits
@@ -87,6 +100,7 @@ export function extractRecommendations(audits: any) {
     .map((a: any) => ({
       id: a.id,
       title: a.title,
+      description: a.description,
       savingsMs: a?.details?.overallSavingsMs || 0,
     }))
     .slice(0, 10);
@@ -109,4 +123,61 @@ export function extractAccessibility(lhr: any) {
       score: a?.score,
     }))
     .slice(0, 10);
+}
+
+// ----- Best Practices extraction -----
+export function extractBestPractices(lhr: any) {
+  if (!lhr || !lhr.categories?.["best-practices"]) return [];
+
+  const auditRefs = lhr.categories["best-practices"].auditRefs || [];
+  const audits = lhr.audits || {};
+
+  return auditRefs
+    .map((ref: any) => audits[ref.id])
+    .filter((a: any) => a && a.score !== 1) // Only failing/improvable
+    .map((a: any) => ({
+      id: a.id,
+      title: a.title,
+      description: a.description || "",
+      score: a.score ?? null,
+      help: a.details?.helpText || a.description || "",
+    }));
+}
+
+// ----- SEO extraction -----
+export function extractSEO(lhr: any) {
+  if (!lhr || !lhr.categories?.seo) return [];
+
+  const auditRefs = lhr.categories.seo.auditRefs || [];
+  const audits = lhr.audits || {};
+
+  return auditRefs
+    .map((ref: any) => audits[ref.id])
+    .filter((a: any) => a && a.score !== 1) // Only failing/improvable
+    .map((a: any) => ({
+      id: a.id,
+      title: a.title,
+      description: a.description || "",
+      score: a.score ?? null,
+      help: a.details?.helpText || a.description || "",
+    }));
+}
+
+// ----- Performance extraction -----
+export function extractPerformanceDetails(lhr: any) {
+  if (!lhr || !lhr.categories?.performance) return [];
+
+  const auditRefs = lhr.categories.performance.auditRefs || [];
+  const audits = lhr.audits || {};
+
+  return auditRefs
+    .map((ref: any) => audits[ref.id])
+    .filter((a: any) => a && a.score !== 1) // Only failing/improvable
+    .map((a: any) => ({
+      id: a.id,
+      title: a.title,
+      description: a.description || "",
+      score: a.score ?? null,
+      help: a.details?.helpText || a.description || "",
+    }));
 }
