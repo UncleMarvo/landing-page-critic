@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "public"."History" ADD COLUMN     "cls" DOUBLE PRECISION,
+ADD COLUMN     "inp" DOUBLE PRECISION,
+ADD COLUMN     "lcp" DOUBLE PRECISION;

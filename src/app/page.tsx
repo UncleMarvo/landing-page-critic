@@ -18,6 +18,7 @@ export default function Home() {
     const data = await res.json();
     setResult(data); // ✅ Save analysis globally
     router.push("/dashboard"); // ✅ Navigate to dashboard
+    // router.push("/dashboard2"); // ✅ Navigate to dashboard2 for testing
   }
 
   return (

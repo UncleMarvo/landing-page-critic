@@ -39,6 +39,9 @@ export async function POST(req: NextRequest) {
     const accessibilityScore = Math.round((lhr.categories?.accessibility?.score || 0) * 100);
     const seoScore = Math.round((lhr.categories?.seo?.score || 0) * 100);
     const bestPracticesScore = Math.round((lhr.categories?.["best-practices"]?.score || 0) * 100);
+    const lcp = lhr.audits["largest-contentful-paint"]?.numericValue ?? null;
+    const cls = lhr.audits["cumulative-layout-shift"]?.numericValue ?? null;
+    const inp = lhr.audits["interaction-to-next-paint"]?.numericValue ?? null;
 
     // ----- Store in DB -----
 
@@ -50,6 +53,9 @@ export async function POST(req: NextRequest) {
         accessibility: accessibilityScore,
         seo: seoScore, 
         bestPractices: bestPracticesScore,
+        cls: cls !== undefined ? Number(cls.toFixed(3)) : null,
+        inp: inp ? Math.round(inp) : null,
+        lcp: lcp ? Math.round(lcp) : null,
       },
     });
 

@@ -69,6 +69,11 @@ export function extractWebVitals(lhr: any) {
       title: "Speed Index",
       value: lhr.audits["speed-index"]?.numericValue,
     },
+    {
+      id: "inp",
+      title: "Input Latency",
+      value: lhr.audits["interaction-to-next-paint"]?.numericValue,
+    },
   ];
 }
 

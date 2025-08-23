@@ -27,21 +27,24 @@ model AuditResult {
 }
 
 model History {
-  id            Int              @id @default(autoincrement())
-  url           String
-  analyzedAt    DateTime         @default(now())
-  performance   Int
-  accessibility Int
-  seo           Int
-  bestPractices Int
+  id              Int              @id @default(autoincrement())
+  url             String
+  analyzedAt      DateTime         @default(now())
+  performance     Int
+  accessibility   Int
+  seo             Int
+  bestPractices   Int
+  lcp             Float?
+  cls             Float?
+  inp             Float?
 
-  details       HistoryDetails?
+  details         HistoryDetails?
 }
 
 model HistoryDetails {
-  id        Int     @id @default(autoincrement())
-  historyId Int     @unique
-  lhr       Json
+  id            Int     @id @default(autoincrement())
+  historyId     Int     @unique
+  lhr           Json
 
-  history   History @relation(fields: [historyId], references: [id], onDelete: Cascade)
+  history       History @relation(fields: [historyId], references: [id], onDelete: Cascade)
 }
