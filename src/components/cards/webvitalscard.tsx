@@ -10,16 +10,15 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { useDashboard } from "@/context/DashboardContext";
+import { Button } from "@/components/ui/button";
 
+// Type definition for Web Vitals data
 type WebVitalsPanelProps = {
   id: string;
   title: string;
   value?: number;
 };
-
-interface WebVitalsCardProps {
-  data: WebVitalsPanelProps[];
-}
 
 // Define the full list of metrics we want to display
 const defaultMetrics: WebVitalsPanelProps[] = [
@@ -33,7 +32,71 @@ const defaultMetrics: WebVitalsPanelProps[] = [
   { id: "inp", title: "Interaction to Next Paint" },
 ];
 
-export default function WebVitalsCard({ data }: WebVitalsCardProps) {
+export default function WebVitalsCard() {
+  // Get data from DashboardContext
+  const { webVitalsData, isLoading, refreshData } = useDashboard();
+  
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+            <Button 
+              onClick={refreshData}
+              disabled={isLoading}
+              size="sm"
+              variant="outline"
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-gray-600 text-sm">Loading Web Vitals data...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Handle empty data state
+  if (!webVitalsData || webVitalsData.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+            <Button 
+              onClick={refreshData}
+              disabled={isLoading}
+              size="sm"
+              variant="outline"
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <p className="text-gray-500">No Web Vitals data available</p>
+              <p className="text-gray-400 text-sm">Enter a URL to analyze and view Web Vitals metrics</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  // Use empty array if no data is available
+  const data = webVitalsData || [];
+  
   // Merge incoming data with defaults, keeping missing metrics
   const mergedData = defaultMetrics.map((metric) => {
     const found = data.find((d) => d.id.toLowerCase() === metric.id);
@@ -97,7 +160,17 @@ export default function WebVitalsCard({ data }: WebVitalsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+          <Button 
+            onClick={refreshData}
+            disabled={isLoading}
+            size="sm"
+            variant="outline"
+          >
+            {isLoading ? "Refreshing..." : "Refresh"}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row gap-4">

@@ -1,22 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
-import { format, subDays } from "date-fns";
+import { subDays } from "date-fns";
 import { useResults } from "@/context/ResultsContext";
+import { DashboardProvider, useDashboard } from "@/context/DashboardContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  Legend,
-} from "recharts";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-{
-  /* Card Components */
-}
+import { Button } from "@/components/ui/button";
+
+/* Card Components */
 import BestPracticesCard from "@/components/cards/bestpracticescard";
 import OpportunitiesCard from "@/components/cards/opportunitiescard";
 import AccessibilityCard from "@/components/cards/accessibilitycard";
@@ -25,7 +15,7 @@ import CategoryScoresCard from "@/components/cards/categoryscorescard";
 import RecommendationsCard from "@/components/cards/recommendationscard";
 import ExportReportCard from "@/components/cards/exportreportcard";
 import WebVitalsCard from "@/components/cards/webvitalscard";
-import CombinedPerformanceCard from "@/components/cards/combinedperformancecard";
+import UrlInput from "@/components/ui/url-input";
 
 interface LighthouseCategory {
   id: string;
@@ -44,10 +34,7 @@ interface WebVital {
 
 export default function Dashboard() {
   const { result } = useResults();
-  // history
-  const [history, setHistory] = useState<any[]>([]);
-  const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
-  // lighthouse results
+  // lighthouse results - these will be used for cards that don't use context yet
   const [categories, setCategories] = useState<LighthouseCategory[]>([]);
   const [webVitals, setWebVitals] = useState<WebVital[]>([]);
   const [opportunities, setOpportunities] = useState<any[]>([]);
@@ -56,16 +43,11 @@ export default function Dashboard() {
   const [bestPractices, setBestPractices] = useState<any[]>([]);
   const [seo, setSeo] = useState<any[]>([]);
   const [performanceDetails, setPerformanceDetails] = useState<any[]>([]);
-  // Date range state
-  const [startDate, setStartDate] = useState(subDays(new Date(), 30)); // default 30 days back
-  const [endDate, setEndDate] = useState(new Date());
 
   useEffect(() => {
     if (!result) {
       return;
     }
-
-    console.log(`*** DEBUG - result (WebVitals): ${JSON.stringify(result.webVitals, null, 2)}`);
 
     // ----- Lighthouse results -----
     setCategories(result.categories);
@@ -76,16 +58,76 @@ export default function Dashboard() {
     setBestPractices(result.bestPractices);
     setSeo(result.seo);
     setPerformanceDetails(result.performanceDetails);
+  }, [result]);
 
-    // ----- DatabaseHistory -----
+  return (
+    <DashboardProvider>
+      <DashboardContent 
+        result={result}
+        categories={categories}
+        recommendations={recommendations}
+        accessibility={accessibility}
+        opportunities={opportunities}
+        bestPractices={bestPractices}
+      />
+    </DashboardProvider>
+  );
+}
+
+// Separate component for dashboard content that uses the context
+function DashboardContent({ 
+  result, 
+  categories, 
+  recommendations, 
+  accessibility, 
+  opportunities, 
+  bestPractices 
+}: {
+  result: any;
+  categories: any[];
+  recommendations: any[];
+  accessibility: any[];
+  opportunities: any[];
+  bestPractices: any[];
+}) {
+  // Get all context data and functions
+  const { 
+    setCurrentUrl, 
+    currentUrl, 
+    isLoading, 
+    refreshData,
+    performanceHistory,
+    webVitalsData
+  } = useDashboard();
+  
+  // Local state for the history chart (separate from context history)
+  const [history, setHistory] = useState<any[]>([]);
+  const [filteredHistory, setFilteredHistory] = useState<any[]>([]);
+  const [startDate, setStartDate] = useState(subDays(new Date(), 30)); // default 30 days back
+  const [endDate, setEndDate] = useState(new Date());
+
+  // Set the current URL when result changes
+  useEffect(() => {
+    if (result?.url) {
+      setCurrentUrl(result.url);
+    }
+  }, [result?.url, setCurrentUrl]);
+
+  // Fetch general history data for the history chart (separate from context)
+  useEffect(() => {
     const fetchHistory = async () => {
-      const history = await fetch("/api/history");
-      const historyData = await history.json();
-      setHistory(historyData);
+      try {
+        const historyResponse = await fetch("/api/history");
+        const historyData = await historyResponse.json();
+        setHistory(historyData);
+      } catch (error) {
+        console.error("Error fetching history:", error);
+      }
     };
     fetchHistory();
   }, []);
 
+  // Filter history based on date range
   useEffect(() => {
     const filterHistory = async () => {
       const filteredHistory = history.filter((entry: any) => {
@@ -95,123 +137,94 @@ export default function Dashboard() {
       setFilteredHistory(filteredHistory);
     };
     filterHistory();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, history]);
 
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Lighthouse Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Lighthouse Dashboard</h1>
+        <div className="flex items-center space-x-4">
+          {currentUrl && (
+            <span className="text-sm text-gray-600">
+              Analyzing: <span className="font-mono">{currentUrl}</span>
+            </span>
+          )}
+          <Button 
+            onClick={refreshData}
+            disabled={isLoading || !currentUrl}
+            className="px-4 py-2"
+          >
+            {isLoading ? "Refreshing..." : "Refresh Data"}
+          </Button>
+        </div>
+      </div>
 
-      {/* Export Report */}
-      <ExportReportCard data={result} />
+      {/* URL Input for switching between different URLs */}
+      <UrlInput className="mb-6" />
 
-      {/* Category Scores */}
-      <CategoryScoresCard data={categories} />
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading dashboard data...</p>
+          </div>
+        </div>
+      )}
 
-      {/* Combined Performance */}
-      <CombinedPerformanceCard analyzeData={webVitals} history={filteredHistory} url={result.url} />
+      {/* Dashboard Content */}
+      {!isLoading && (
+        <>
+          {/* Export Report */}
+          <ExportReportCard data={result} />
 
-      {/* Performance Metrics */}
-      <PerformanceMetricsCard history={filteredHistory} />
+          {/* Category Scores */}
+          <CategoryScoresCard data={categories} />
 
-      {/* Web Vitals */}
-      <WebVitalsCard data={webVitals} />
+          {/* Web Vitals - Now uses context data */}
+          <WebVitalsCard />
 
-      {/* Recommendations */}
-      <RecommendationsCard data={recommendations} />
+          {/* Performance Metrics - Now uses context data */}
+          <PerformanceMetricsCard />
 
-      {/* Accessibility */}
-      <AccessibilityCard data={accessibility} />
+          {/* Recommendations */}
+          <RecommendationsCard data={recommendations} />
 
-      {/* Opportunities */}
-      <OpportunitiesCard data={opportunities} />
+          {/* Accessibility */}
+          <AccessibilityCard data={accessibility} />
 
-      {/* Best Practices */}
-      <BestPracticesCard data={bestPractices} />
+          {/* Opportunities */}
+          <OpportunitiesCard data={opportunities} />
 
-      {/* History */}
+          {/* Best Practices */}
+          <BestPracticesCard data={bestPractices} />
+        </>
+      )}
+
+      {/* Context Data Status */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">History</CardTitle>
+          <CardTitle className="text-xl font-bold">Dashboard Context Status</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Date Range Picker */}
-          <div className="flex space-x-2 items-center mb-4">
-            <span>From:</span>
-            <DatePicker
-              selected={startDate}
-              onChange={(date: Date | null) => date && setStartDate(date)}
-              selectsStart
-              startDate={startDate}
-              endDate={endDate}
-              maxDate={new Date()}
-              dateFormat="MMM d, yyyy"
-              className="border px-2 py-1 rounded"
-            />
-            <span>To:</span>
-            <DatePicker
-              selected={endDate}
-              onChange={(date: Date | null) => date && setEndDate(date)}
-              selectsEnd
-              startDate={startDate}
-              endDate={endDate}
-              minDate={startDate}
-              maxDate={new Date()}
-              dateFormat="MMM d, yyyy"
-              className="border px-2 py-1 rounded"
-            />
-
-            <div className="flex space-x-2">
-              <button
-                className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
-                onClick={() => {
-                  setStartDate(subDays(new Date(), 7));
-                  setEndDate(new Date());
-                }}
-              >
-                Last 7 days
-              </button>
-              <button
-                className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
-                onClick={() => {
-                  setStartDate(subDays(new Date(), 30));
-                  setEndDate(new Date());
-                }}
-              >
-                Last 30 days
-              </button>
-              <button
-                className="px-3 py-1 border rounded bg-gray-200 hover:bg-gray-300"
-                onClick={() => {
-                  setStartDate(new Date(0)); // epoch start
-                  setEndDate(new Date());
-                }}
-              >
-                All-time
-              </button>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Current URL</p>
+              <p className="font-mono text-sm">{currentUrl || "Not set"}</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Web Vitals Data</p>
+              <p className="text-sm">{webVitalsData ? `${webVitalsData.length} metrics` : "No data"}</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Performance History</p>
+              <p className="text-sm">{performanceHistory ? `${performanceHistory.length} entries` : "No data"}</p>
+            </div>
+            <div className="p-3 bg-gray-50 rounded">
+              <p className="text-sm text-gray-600">Loading State</p>
+              <p className="text-sm">{isLoading ? "Loading..." : "Ready"}</p>
             </div>
           </div>
-
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={filteredHistory}>
-              <XAxis
-                dataKey="analyzedAt"
-                tickFormatter={
-                  (value: string) => format(new Date(value), "MMM d, HH:mm") // e.g. "Aug 20, 18:30"
-                }
-              />
-              <YAxis />
-              <Tooltip
-                labelFormatter={
-                  (value: string) => format(new Date(value), "MMM d, HH:mm") // tooltip label, e.g. "Aug 20, 2025, 6:30 PM"
-                }
-              />
-              <Legend />
-              <Line dataKey="performance" stroke="#4f46e5" />
-              <Line dataKey="accessibility" stroke="#10b981" />
-              <Line dataKey="seo" stroke="#f59e0b" />
-              <Line dataKey="bestPractices" stroke="#ef4444" />
-            </LineChart>
-          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>
