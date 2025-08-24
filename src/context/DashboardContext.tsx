@@ -73,6 +73,9 @@ interface DashboardState {
   bestPracticesData: BestPracticesPanelProps[] | null;
   setBestPracticesData: (data: BestPracticesPanelProps[]) => void;
 
+  platforms: string[] | null;
+  setPlatforms: (platforms: string[]) => void;
+
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
 
@@ -98,6 +101,8 @@ const DashboardContext = createContext<DashboardState>({
   setOpportunitiesData: () => {},
   bestPracticesData: null,
   setBestPracticesData: () => {},
+  platforms: null,
+  setPlatforms: () => {},
   isLoading: false,
   setIsLoading: () => {},
   refreshData: async () => {},
@@ -114,6 +119,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [accessibilityData, setAccessibilityData] = useState<AccessibilityPanelProps[] | null>(null);
   const [opportunitiesData, setOpportunitiesData] = useState<OpportunitiesPanelProps[] | null>(null);
   const [bestPracticesData, setBestPracticesData] = useState<BestPracticesPanelProps[] | null>(null);
+  const [platforms, setPlatforms] = useState<string[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Function to fetch Lighthouse analysis data
@@ -156,6 +162,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
       if (data.bestPractices) {
         setBestPracticesData(data.bestPractices);
+      }
+      if (data.platforms) {
+        setPlatforms(data.platforms);
       }
     } catch (error) {
       console.error("Error fetching analysis data:", error);
@@ -224,6 +233,8 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setOpportunitiesData,
     bestPracticesData,
     setBestPracticesData,
+    platforms,
+    setPlatforms,
     isLoading,
     setIsLoading,
     refreshData,

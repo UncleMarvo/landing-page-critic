@@ -42,6 +42,7 @@ export default function AIInsightsCard() {
     accessibilityData, 
     bestPracticesData, 
     performanceHistory,
+    platforms, // Add platforms data
     isLoading 
   } = useDashboard();
 
@@ -92,6 +93,7 @@ export default function AIInsightsCard() {
         accessibility: accessibilityData || [],
         bestPractices: bestPracticesData || [],
         performanceHistory: performanceHistory || [],
+        platforms: platforms || [], // Include platform information
       };
 
       const response = await fetch('/api/ai-insights', {

@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
       accessibility: accessibility || [],
       bestPractices: bestPractices || [],
       performanceHistory: performanceHistory || [],
+      platforms: body.platforms || [], // Pass platform information
     };
 
     // Generate AI insights

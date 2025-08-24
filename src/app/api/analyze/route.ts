@@ -1,15 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  fetchLighthouseResults,
-  extractCategories,
-  extractWebVitals,
-  extractOpportunities,
-  extractRecommendations,
-  extractAccessibility,
-  extractBestPractices,
-  extractSEO,
-  extractPerformanceDetails,
-} from "@/lib/lighthouse";
+import { fetchAllPlatformMetrics, consolidateMetrics, convertToLegacyFormat } from "@/lib/platforms/manager";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
@@ -17,31 +7,30 @@ export async function POST(req: NextRequest) {
     const { url } = await req.json();
     if (!url) return NextResponse.json({ error: "Missing URL" }, { status: 400 });
 
-    const lhr = await fetchLighthouseResults(url);
+    console.log('Analyzing URL:', url);
 
-    if (!lhr) {
-      return new Response(
-        JSON.stringify({ error: "No Lighthouse results available" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
+    // Fetch metrics from all enabled platforms
+    const platformData = await fetchAllPlatformMetrics(url);
+    console.log('Platform data received:', platformData.map(p => ({ platform: p.platform, error: p.error, metricsCount: p.metrics.length })));
+    
+    // Check if we have any successful results
+    const successfulPlatforms = platformData.filter(data => !data.error);
+    console.log('Successful platforms:', successfulPlatforms.map(p => p.platform));
+    
+    if (successfulPlatforms.length === 0) {
+      console.log('No successful platforms found');
+      return NextResponse.json(
+        { error: "No performance data available from any platform" },
+        { status: 400 }
       );
     }
 
-    const categories = await extractCategories(lhr);
-    const webVitals = await extractWebVitals(lhr);
-    const opportunities = await extractOpportunities(lhr.audits);
-    const recommendations = await extractRecommendations(lhr.audits);
-    const accessibility = await extractAccessibility(lhr);
-    const bestPractices = await extractBestPractices(lhr);
-    const seo = await extractSEO(lhr);
-    const performanceDetails = await extractPerformanceDetails(lhr);
-
-    const performanceScore = Math.round((lhr.categories?.performance?.score || 0) * 100);
-    const accessibilityScore = Math.round((lhr.categories?.accessibility?.score || 0) * 100);
-    const seoScore = Math.round((lhr.categories?.seo?.score || 0) * 100);
-    const bestPracticesScore = Math.round((lhr.categories?.["best-practices"]?.score || 0) * 100);
-    const lcp = lhr.audits["largest-contentful-paint"]?.numericValue ?? null;
-    const cls = lhr.audits["cumulative-layout-shift"]?.numericValue ?? null;
-    const inp = lhr.audits["interaction-to-next-paint"]?.numericValue ?? null;
+    // Consolidate metrics from all platforms
+    const consolidatedData = consolidateMetrics(platformData);
+    console.log('Consolidated data created with platforms:', consolidatedData.platforms);
+    
+    // Convert to legacy format for existing components
+    const legacyData = convertToLegacyFormat(consolidatedData);
 
     // ----- Store in DB -----
 
@@ -49,35 +38,38 @@ export async function POST(req: NextRequest) {
     const history = await prisma.history.create({
       data: {
         url,
-        performance: performanceScore,
-        accessibility: accessibilityScore,
-        seo: seoScore, 
-        bestPractices: bestPracticesScore,
-        cls: cls !== undefined ? Number(cls.toFixed(3)) : null,
-        inp: inp ? Math.round(inp) : null,
-        lcp: lcp ? Math.round(lcp) : null,
+        performance: consolidatedData.scores.performance,
+        accessibility: consolidatedData.scores.accessibility,
+        seo: consolidatedData.scores.seo, 
+        bestPractices: consolidatedData.scores['best-practices'],
+        cls: consolidatedData.webVitals.cls !== undefined ? Number(consolidatedData.webVitals.cls.toFixed(3)) : null,
+        inp: consolidatedData.webVitals.inp ? Math.round(consolidatedData.webVitals.inp) : null,
+        lcp: consolidatedData.webVitals.lcp ? Math.round(consolidatedData.webVitals.lcp) : null,
       },
     });
 
-    // 2️⃣ Insert full JSON linked to history entry
+    // 2️⃣ Insert full JSON linked to history entry (store consolidated data)
     await prisma.historyDetails.create({
       data: {
         historyId: history.id,
-        lhr,
+        lhr: {
+          consolidatedData: JSON.parse(JSON.stringify(consolidatedData)),
+          platformData: JSON.parse(JSON.stringify(platformData)),
+          platforms: consolidatedData.platforms,
+        },
       },
     });
 
     return NextResponse.json({ 
       url,
       analyzedAt: new Date(),
-      categories,
-      webVitals,
-      opportunities,
-      recommendations,
-      accessibility,
-      bestPractices, 
-      seo, 
-      performanceDetails 
+      platforms: consolidatedData.platforms,
+      categories: legacyData.categories,
+      webVitals: legacyData.webVitals,
+      opportunities: legacyData.opportunities,
+      recommendations: legacyData.recommendations,
+      accessibility: legacyData.accessibility,
+      bestPractices: legacyData.bestPractices,
     });
 
   } catch (error: any) {

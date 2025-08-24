@@ -24,6 +24,7 @@ export interface InsightRequest {
   accessibility: any[];
   bestPractices: any[];
   performanceHistory: any[];
+  platforms?: string[]; // New field for multi-platform data
 }
 
 export interface LLMConfig {
@@ -67,15 +68,20 @@ function generateCacheKey(request: InsightRequest): string {
  * Format metrics data for AI analysis
  */
 function formatMetricsForAI(request: InsightRequest): string {
-  const { url, webVitals, categories, opportunities, recommendations, accessibility, bestPractices, performanceHistory } = request;
+  const { url, webVitals, categories, opportunities, recommendations, accessibility, bestPractices, performanceHistory, platforms } = request;
   
   let formattedData = `Website Analysis for: ${url}\n\n`;
+  
+  // Data Sources (if available)
+  if (platforms && platforms.length > 0) {
+    formattedData += `Data Sources: ${platforms.join(', ')}\n\n`;
+  }
   
   // Web Vitals
   if (webVitals && webVitals.length > 0) {
     formattedData += `Web Vitals:\n`;
     webVitals.forEach(vital => {
-      formattedData += `- ${vital.title}: ${vital.value}${vital.unit} (${vital.level})\n`;
+      formattedData += `- ${vital.title}: ${vital.value}${vital.unit || 'ms'} (${vital.level || 'N/A'})\n`;
     });
     formattedData += '\n';
   }
