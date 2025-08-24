@@ -16,6 +16,37 @@ type HistoryEntry = {
   bestPractices: number;
 };
 
+type CategoryScoresPanelProps = {
+  id: string;
+  title: string;
+  score: number;
+  description?: string;
+};
+
+type RecommendationsPanelProps = {
+  id: string;
+  title: string;
+  description?: string;
+};
+
+type AccessibilityPanelProps = {
+  id: string;
+  title: string;
+  description?: string;
+};
+
+type OpportunitiesPanelProps = {
+  id: string;
+  title: string;
+  description?: string;
+};
+
+type BestPracticesPanelProps = {
+  id: string;
+  title: string;
+  description?: string;
+};
+
 // Define the context state interface
 interface DashboardState {
   currentUrl: string;
@@ -26,6 +57,21 @@ interface DashboardState {
 
   performanceHistory: HistoryEntry[] | null;
   setPerformanceHistory: (history: HistoryEntry[]) => void;
+
+  categoriesData: CategoryScoresPanelProps[] | null;
+  setCategoriesData: (data: CategoryScoresPanelProps[]) => void;
+
+  recommendationsData: RecommendationsPanelProps[] | null;
+  setRecommendationsData: (data: RecommendationsPanelProps[]) => void;
+
+  accessibilityData: AccessibilityPanelProps[] | null;
+  setAccessibilityData: (data: AccessibilityPanelProps[]) => void;
+
+  opportunitiesData: OpportunitiesPanelProps[] | null;
+  setOpportunitiesData: (data: OpportunitiesPanelProps[]) => void;
+
+  bestPracticesData: BestPracticesPanelProps[] | null;
+  setBestPracticesData: (data: BestPracticesPanelProps[]) => void;
 
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
@@ -42,6 +88,16 @@ const DashboardContext = createContext<DashboardState>({
   setWebVitalsData: () => {},
   performanceHistory: null,
   setPerformanceHistory: () => {},
+  categoriesData: null,
+  setCategoriesData: () => {},
+  recommendationsData: null,
+  setRecommendationsData: () => {},
+  accessibilityData: null,
+  setAccessibilityData: () => {},
+  opportunitiesData: null,
+  setOpportunitiesData: () => {},
+  bestPracticesData: null,
+  setBestPracticesData: () => {},
   isLoading: false,
   setIsLoading: () => {},
   refreshData: async () => {},
@@ -53,6 +109,11 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [currentUrl, setCurrentUrl] = useState<string>("");
   const [webVitalsData, setWebVitalsData] = useState<WebVitalsPanelProps[] | null>(null);
   const [performanceHistory, setPerformanceHistory] = useState<HistoryEntry[] | null>(null);
+  const [categoriesData, setCategoriesData] = useState<CategoryScoresPanelProps[] | null>(null);
+  const [recommendationsData, setRecommendationsData] = useState<RecommendationsPanelProps[] | null>(null);
+  const [accessibilityData, setAccessibilityData] = useState<AccessibilityPanelProps[] | null>(null);
+  const [opportunitiesData, setOpportunitiesData] = useState<OpportunitiesPanelProps[] | null>(null);
+  const [bestPracticesData, setBestPracticesData] = useState<BestPracticesPanelProps[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   // Function to fetch Lighthouse analysis data
@@ -77,9 +138,24 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const data = await response.json();
       
-      // Extract Web Vitals data from the response
+      // Extract all data from the response
       if (data.webVitals) {
         setWebVitalsData(data.webVitals);
+      }
+      if (data.categories) {
+        setCategoriesData(data.categories);
+      }
+      if (data.recommendations) {
+        setRecommendationsData(data.recommendations);
+      }
+      if (data.accessibility) {
+        setAccessibilityData(data.accessibility);
+      }
+      if (data.opportunities) {
+        setOpportunitiesData(data.opportunities);
+      }
+      if (data.bestPractices) {
+        setBestPracticesData(data.bestPractices);
       }
     } catch (error) {
       console.error("Error fetching analysis data:", error);
@@ -138,6 +214,16 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setWebVitalsData,
     performanceHistory,
     setPerformanceHistory,
+    categoriesData,
+    setCategoriesData,
+    recommendationsData,
+    setRecommendationsData,
+    accessibilityData,
+    setAccessibilityData,
+    opportunitiesData,
+    setOpportunitiesData,
+    bestPracticesData,
+    setBestPracticesData,
     isLoading,
     setIsLoading,
     refreshData,

@@ -179,7 +179,7 @@ function DashboardContent({
           <ExportReportCard data={result} />
 
           {/* Category Scores */}
-          <CategoryScoresCard data={categories} />
+          <CategoryScoresCard />
 
           {/* Web Vitals - Now uses context data */}
           <WebVitalsCard />
@@ -188,16 +188,16 @@ function DashboardContent({
           <PerformanceMetricsCard />
 
           {/* Recommendations */}
-          <RecommendationsCard data={recommendations} />
+          <RecommendationsCard />
 
           {/* Accessibility */}
-          <AccessibilityCard data={accessibility} />
+          <AccessibilityCard />
 
           {/* Opportunities */}
-          <OpportunitiesCard data={opportunities} />
+          <OpportunitiesCard />
 
           {/* Best Practices */}
-          <BestPracticesCard data={bestPractices} />
+          <BestPracticesCard />
         </>
       )}
 

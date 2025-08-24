@@ -10,6 +10,8 @@ import {
   BarChart,
   Cell,
 } from "recharts";
+import { useDashboard } from "@/context/DashboardContext";
+import { Button } from "@/components/ui/button";
 
 type CategoryScoresPanelProps = {
   id: string;
@@ -18,27 +20,91 @@ type CategoryScoresPanelProps = {
   description?: string;
 };
 
-interface CategoryScoresCardProps {
-  data: CategoryScoresPanelProps[];
-}
-
-export default function CategoryScoresCard({ data }: CategoryScoresCardProps) {
+export default function CategoryScoresCard() {
+  // Get data from DashboardContext
+  const { categoriesData, isLoading, refreshData } = useDashboard();
+  
+  // Use data from context or empty array if no data
+  const data = categoriesData || [];
   const getScoreColor = (score: number) => {
     if (score >= 90) return "text-green-600";
     if (score >= 50) return "text-yellow-600";
     return "text-red-600";
   };
 
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-bold">Category Scores</CardTitle>
+            <Button
+              onClick={refreshData}
+              disabled={isLoading}
+              size="sm"
+              variant="outline"
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+              <p className="text-gray-600 text-sm">Loading category scores...</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Handle empty data state
+  if (!data || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-bold">Category Scores</CardTitle>
+            <Button
+              onClick={refreshData}
+              disabled={isLoading}
+              size="sm"
+              variant="outline"
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <p className="text-gray-500">No category scores available</p>
+              <p className="text-gray-400 text-sm">Enter a URL to analyze and view category scores</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
         <CardTitle className="text-2xl font-bold">Category Scores</CardTitle>
+        <Button
+          onClick={refreshData}
+          disabled={isLoading}
+          size="sm"
+          variant="outline"
+        >
+          {isLoading ? "Refreshing..." : "Refresh"}
+        </Button>
       </CardHeader>
 
       <CardContent className="space-y-6">
-        {!data || data.length === 0 ? (
-          <div>No data available.</div>
-        ) : (
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="grid grid-cols-2 gap-4">
