@@ -15,6 +15,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User model for authentication
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  password          String?   // Null for OAuth users
+  name              String?
+  emailVerified     DateTime?
+  image             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // OAuth fields
+  oauthProvider     String?   // 'google', 'github', etc.
+  oauthId           String?   // ID from OAuth provider
+  
+  // Email verification
+  verificationToken String?   @unique
+  verificationExpires DateTime?
+  
+  // Password reset
+  resetToken        String?   @unique
+  resetExpires      DateTime?
+  
+  // Relations
+  auditResults      AuditResult[]
+  history           History[]
+  aiInsights        AIInsight[]
+  
+  @@index([email])
+  @@index([oauthProvider, oauthId])
+}
+
 model AuditResult {
   id          String   @id @default(cuid())
   url         String
@@ -24,6 +56,10 @@ model AuditResult {
   opportunities Json
   recommendations Json
   accessibility Json
+  
+  // Add user relation
+  userId      String?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model History {
@@ -39,6 +75,10 @@ model History {
   inp             Float?
 
   details         HistoryDetails?
+  
+  // Add user relation
+  userId          String?
+  user            User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model HistoryDetails {
@@ -62,6 +102,10 @@ model AIInsight {
   status          String   @default("pending") // 'pending', 'applied', 'ignored'
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // Add user relation
+  userId          String?
+  user            User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([url])
   @@index([status])
