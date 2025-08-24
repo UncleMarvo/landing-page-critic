@@ -158,7 +158,6 @@ export default function CategoryScoresCard() {
               </div>
             </div>
           </div>
-        )}
       </CardContent>
     </Card>
   );

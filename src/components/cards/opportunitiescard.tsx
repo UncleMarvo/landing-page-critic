@@ -93,42 +93,22 @@ export default function OpportunitiesCard() {
       </CardHeader>
       <CardContent className="flex justify-between items-stretch">
         {/* Table */}
-        <table className="w-2/3 self-start">
+        <table className="min-w-full text-sm">
           <thead>
             <tr className="text-left border-b">
-              <th>Metric</th>
-              <th>Estimated Savings (ms)</th>
+              <th>Opportunity</th>
+              <th>Description</th>
             </tr>
           </thead>
           <tbody>
             {topData.map((op) => (
               <tr key={op.id} className="border-b">
-                <td>{op.title}</td>
-                <td>{Math.round(op.savingsMs)} ms</td>
+                <td className="p-2 font-medium">{op.title}</td>
+                <td className="p-2 text-muted-foreground">{op.description}</td>
               </tr>
             ))}
           </tbody>
         </table>
-
-        {/* Bar Chart */}
-        <div className="w-1/3 flex-grow h-full h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              layout="vertical"
-              data={topData}
-              margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
-            >
-              <XAxis type="number" tickFormatter={(val) => `${Math.round(val)}ms`} />
-              <YAxis type="category" dataKey="title" width={150} />
-              <Tooltip formatter={(val: number) => `${Math.round(val)} ms`} />
-              <Bar dataKey="savingsMs">
-                {topData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill="#4ade80" />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
       </CardContent>
     </Card>
   );

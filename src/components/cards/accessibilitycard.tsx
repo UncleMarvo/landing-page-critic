@@ -74,14 +74,8 @@ export default function AccessibilityCard() {
     );
   }
 
-  // Pass vs fail counts
-  const passCount = data.filter((d) => d.score === 1).length;
-  const failCount = data.length - passCount;
-
-  const chartData = [
-    { name: "Pass", value: passCount },
-    { name: "Fail", value: failCount },
-  ];
+  // Count total issues
+  const totalIssues = data.length;
 
   return (
     <Card>

@@ -15,6 +15,7 @@ import CategoryScoresCard from "@/components/cards/categoryscorescard";
 import RecommendationsCard from "@/components/cards/recommendationscard";
 import ExportReportCard from "@/components/cards/exportreportcard";
 import WebVitalsCard from "@/components/cards/webvitalscard";
+import AIInsightsCard from "@/components/cards/aiinsightscard";
 import UrlInput from "@/components/ui/url-input";
 
 interface LighthouseCategory {
@@ -177,6 +178,9 @@ function DashboardContent({
         <>
           {/* Export Report */}
           <ExportReportCard data={result} />
+
+          {/* AI-Powered Insights */}
+          <AIInsightsCard />
 
           {/* Category Scores */}
           <CategoryScoresCard />

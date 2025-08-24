@@ -48,3 +48,23 @@ model HistoryDetails {
 
   history       History @relation(fields: [historyId], references: [id], onDelete: Cascade)
 }
+
+model AIInsight {
+  id              String   @id @default(cuid())
+  url             String
+  title           String
+  description     String
+  severity        String   // 'High', 'Medium', 'Low'
+  category        String   // 'Performance', 'Accessibility', 'SEO', 'Best Practices', 'Web Vitals'
+  actionable      Boolean  @default(true)
+  estimatedImpact String
+  priority        Int      @default(5)
+  status          String   @default("pending") // 'pending', 'applied', 'ignored'
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([url])
+  @@index([status])
+  @@index([severity])
+  @@index([category])
+}
