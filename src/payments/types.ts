@@ -1,29 +1,24 @@
-// Payment and subscription related types
+// Tier definitions
+export type Tier = 'free' | 'pro';
 
-export type Tier = 'free' | 'pro' | 'enterprise';
+// Subscription status
+export type SubscriptionStatus = 
+  | 'active' 
+  | 'canceled' 
+  | 'past_due' 
+  | 'incomplete' 
+  | 'incomplete_expired' 
+  | 'trialing' 
+  | 'unpaid';
 
-export interface TierConfig {
-  name: string;
-  price: number;
-  currency: string;
-  interval: 'month' | 'year';
-  features: string[];
-  limits: {
-    analysesPerMonth: number;
-    teamMembers?: number;
-    prioritySupport?: boolean;
-    customReports?: boolean;
-  };
-  stripePriceId?: string;
-}
-
+// Subscription interface
 export interface Subscription {
   id: string;
   userId: string;
   tier: Tier;
   stripeSubscriptionId?: string;
   stripeCustomerId?: string;
-  subscriptionStatus: 'active' | 'canceled' | 'past_due' | 'unpaid' | 'trialing';
+  subscriptionStatus: SubscriptionStatus;
   currentPeriodStart: Date;
   currentPeriodEnd: Date;
   cancelAtPeriodEnd: boolean;
@@ -31,16 +26,100 @@ export interface Subscription {
   updatedAt: Date;
 }
 
+// Payment result interface
 export interface PaymentResult {
   success: boolean;
-  message?: string;
   error?: string;
-  redirectUrl?: string;
+  sessionId?: string;
+  url?: string;
 }
 
+// Subscription management result
 export interface SubscriptionManagementResult {
   success: boolean;
-  message?: string;
   error?: string;
   subscription?: Subscription;
+}
+
+// Stripe invoice interface
+export interface StripeInvoice {
+  id: string;
+  amount: number;
+  currency: string;
+  status: string;
+  invoice_pdf?: string;
+  hosted_invoice_url?: string;
+  created: number;
+}
+
+// Tier configuration interface
+export interface TierConfig {
+  name: string;
+  price: number; // in cents
+  currency: string;
+  interval: 'month' | 'year';
+  stripePriceId: string;
+  features: string[];
+  limits: {
+    monthlyAnalyses: number; // -1 for unlimited
+    aiInsights: number; // -1 for unlimited
+    exportReports: number; // -1 for unlimited
+    prioritySupport: boolean;
+    customReports: boolean;
+    apiAccess: boolean;
+    teamCollaboration: boolean;
+  };
+}
+
+// Payment configuration interface
+export interface PaymentConfig {
+  currency: string;
+  tiers: Record<string, TierConfig>;
+  trialDays?: number;
+  webhookSecret: string;
+}
+
+// Checkout session data
+export interface CheckoutSessionData {
+  tier: Tier;
+  successUrl: string;
+  cancelUrl: string;
+  customerEmail: string;
+  customerId: string;
+}
+
+// Subscription update data
+export interface SubscriptionUpdateData {
+  tier: Tier;
+  action: 'upgrade' | 'downgrade' | 'cancel';
+}
+
+// Feature access interface
+export interface FeatureAccess {
+  canAccessAIInsights: boolean;
+  canExportReports: boolean;
+  canAccessAdvancedMetrics: boolean;
+  canAccessPrioritySupport: boolean;
+  canAccessAPI: boolean;
+  canAccessTeamCollaboration: boolean;
+  monthlyAnalysesLimit: number;
+  aiInsightsLimit: number;
+  exportReportsLimit: number;
+}
+
+// User subscription info
+export interface UserSubscription {
+  tier: Tier;
+  subscriptionStatus: SubscriptionStatus;
+  currentPeriodEnd?: Date;
+  cancelAtPeriodEnd: boolean;
+}
+
+// Usage tracking interface
+export interface UserUsage {
+  auditResults: number;
+  aiInsights: number;
+  exportReports: number;
+  periodStart: Date;
+  periodEnd: Date;
 }

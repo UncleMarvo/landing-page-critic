@@ -12,6 +12,8 @@ export function getFeatureAccess(tier: Tier): FeatureAccess {
       canExportReports: false,
       canAccessAdvancedMetrics: false,
       canAccessPrioritySupport: false,
+      canAccessAPI: false,
+      canAccessTeamCollaboration: false,
       monthlyAnalysesLimit: 0,
       aiInsightsLimit: 0,
       exportReportsLimit: 0,
@@ -22,7 +24,9 @@ export function getFeatureAccess(tier: Tier): FeatureAccess {
     canAccessAIInsights: tier !== 'free',
     canExportReports: tier !== 'free',
     canAccessAdvancedMetrics: tier === 'pro',
-    canAccessPrioritySupport: tier === 'pro',
+    canAccessPrioritySupport: tierConfig.limits.prioritySupport,
+    canAccessAPI: tierConfig.limits.apiAccess,
+    canAccessTeamCollaboration: tierConfig.limits.teamCollaboration,
     monthlyAnalysesLimit: tierConfig.limits.monthlyAnalyses || 0,
     aiInsightsLimit: tierConfig.limits.aiInsights || 0,
     exportReportsLimit: tierConfig.limits.exportReports || 0,
@@ -39,7 +43,7 @@ export function canAccessFeature(tier: Tier, feature: keyof FeatureAccess): bool
 export function canPerformAction(tier: Tier, action: string): boolean {
   switch (action) {
     case 'audit':
-      return tier !== 'free' || true; // Free users can do basic audits
+      return true; // All users can do basic audits
     case 'aiInsight':
       return tier !== 'free';
     case 'exportReport':
@@ -51,6 +55,8 @@ export function canPerformAction(tier: Tier, action: string): boolean {
     case 'apiAccess':
       return tier === 'pro';
     case 'teamCollaboration':
+      return tier === 'pro';
+    case 'customReports':
       return tier === 'pro';
     default:
       return false;
@@ -65,21 +71,21 @@ export function getTierFeatures(tier: Tier): string[] {
 
 // Check if tier upgrade is available
 export function canUpgradeTier(currentTier: Tier): boolean {
-  const tierOrder = ['free', 'basic', 'pro'];
+  const tierOrder = ['free', 'pro'];
   const currentIndex = tierOrder.indexOf(currentTier);
   return currentIndex < tierOrder.length - 1;
 }
 
 // Check if tier downgrade is available
 export function canDowngradeTier(currentTier: Tier): boolean {
-  const tierOrder = ['free', 'basic', 'pro'];
+  const tierOrder = ['free', 'pro'];
   const currentIndex = tierOrder.indexOf(currentTier);
   return currentIndex > 0;
 }
 
 // Get next available tier
 export function getNextTier(currentTier: Tier): Tier | null {
-  const tierOrder: Tier[] = ['free', 'basic', 'pro'];
+  const tierOrder: Tier[] = ['free', 'pro'];
   const currentIndex = tierOrder.indexOf(currentTier);
   
   if (currentIndex === -1 || currentIndex === tierOrder.length - 1) {
@@ -91,7 +97,7 @@ export function getNextTier(currentTier: Tier): Tier | null {
 
 // Get previous tier
 export function getPreviousTier(currentTier: Tier): Tier | null {
-  const tierOrder: Tier[] = ['free', 'basic', 'pro'];
+  const tierOrder: Tier[] = ['free', 'pro'];
   const currentIndex = tierOrder.indexOf(currentTier);
   
   if (currentIndex <= 0) {
@@ -113,6 +119,12 @@ export function hasExceededLimit(
   }
 
   const limit = tierConfig.limits[limitType] || 0;
+  
+  // -1 means unlimited
+  if (limit === -1) {
+    return false;
+  }
+  
   return currentUsage >= limit;
 }
 
@@ -128,7 +140,51 @@ export function getRemainingUsage(
   }
 
   const limit = tierConfig.limits[limitType] || 0;
+  
+  // -1 means unlimited
+  if (limit === -1) {
+    return -1; // Unlimited
+  }
+  
   return Math.max(0, limit - currentUsage);
+}
+
+// Check if tier has unlimited access for a specific feature
+export function hasUnlimitedAccess(
+  tier: Tier,
+  feature: 'monthlyAnalyses' | 'aiInsights' | 'exportReports'
+): boolean {
+  const tierConfig = getTierConfig(tier);
+  if (!tierConfig) {
+    return false;
+  }
+
+  return tierConfig.limits[feature] === -1;
+}
+
+// Get usage percentage for a limit type
+export function getUsagePercentage(
+  tier: Tier,
+  currentUsage: number,
+  limitType: 'monthlyAnalyses' | 'aiInsights' | 'exportReports'
+): number {
+  const tierConfig = getTierConfig(tier);
+  if (!tierConfig) {
+    return 100;
+  }
+
+  const limit = tierConfig.limits[limitType] || 0;
+  
+  // -1 means unlimited
+  if (limit === -1) {
+    return 0; // 0% usage for unlimited
+  }
+  
+  if (limit === 0) {
+    return 100;
+  }
+  
+  return Math.min(100, (currentUsage / limit) * 100);
 }
 
 // Check if subscription is active
@@ -174,17 +230,19 @@ export function getSubscriptionStatusText(status: string): string {
 export function getSubscriptionStatusColor(status: string): string {
   switch (status) {
     case 'active':
-    case 'trialing':
       return 'green';
+    case 'trialing':
+      return 'blue';
     case 'past_due':
+      return 'yellow';
+    case 'canceled':
+      return 'red';
     case 'unpaid':
       return 'red';
-    case 'canceled':
-    case 'incomplete_expired':
-      return 'gray';
     case 'incomplete':
       return 'yellow';
-    case 'inactive':
+    case 'incomplete_expired':
+      return 'red';
     default:
       return 'gray';
   }
@@ -192,7 +250,7 @@ export function getSubscriptionStatusColor(status: string): string {
 
 // Validate tier name
 export function isValidTier(tier: string): tier is Tier {
-  return ['free', 'basic', 'pro'].includes(tier);
+  return ['free', 'pro'].includes(tier);
 }
 
 // Get tier display name
@@ -204,4 +262,19 @@ export function getTierDisplayName(tier: Tier): string {
 // Check if tier is paid
 export function isPaidTier(tier: Tier): boolean {
   return tier !== 'free';
+}
+
+// Get upgrade prompt message for restricted features
+export function getUpgradePrompt(feature: string): string {
+  const prompts: Record<string, string> = {
+    aiInsights: 'Upgrade to Pro to access AI-powered insights and recommendations',
+    exportReports: 'Upgrade to Pro to export detailed reports in PDF and CSV formats',
+    advancedMetrics: 'Upgrade to Pro to access advanced performance metrics and analytics',
+    prioritySupport: 'Upgrade to Pro to get priority support and faster response times',
+    apiAccess: 'Upgrade to Pro to access our API for automated testing and integrations',
+    teamCollaboration: 'Upgrade to Pro to collaborate with your team members',
+    unlimitedAnalyses: 'Upgrade to Pro for unlimited monthly analyses',
+  };
+  
+  return prompts[feature] || 'Upgrade to Pro to access this feature';
 }

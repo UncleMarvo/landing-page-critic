@@ -7,16 +7,23 @@ export const TIER_CONFIGS: Record<Tier, TierConfig> = {
     price: 0,
     currency: 'USD',
     interval: 'month',
+    stripePriceId: '', // No Stripe price ID for free tier
     features: [
       '5 analyses per month',
       'Basic performance metrics',
       'Web Vitals analysis',
+      'Core accessibility checks',
+      'Basic SEO insights',
       'Email support'
     ],
     limits: {
-      analysesPerMonth: 5,
+      monthlyAnalyses: 5,
+      aiInsights: 3,
+      exportReports: 1,
       prioritySupport: false,
-      customReports: false
+      customReports: false,
+      apiAccess: false,
+      teamCollaboration: false
     }
   },
   pro: {
@@ -24,43 +31,28 @@ export const TIER_CONFIGS: Record<Tier, TierConfig> = {
     price: 29,
     currency: 'USD',
     interval: 'month',
+    stripePriceId: process.env.STRIPE_PRO_PRICE_ID || '',
     features: [
       'Unlimited analyses',
       'Advanced performance metrics',
       'AI-powered insights',
       'Priority support',
       'Custom reports',
-      'Team collaboration (up to 5 members)'
-    ],
-    limits: {
-      analysesPerMonth: -1, // Unlimited
-      teamMembers: 5,
-      prioritySupport: true,
-      customReports: true
-    },
-    stripePriceId: process.env.STRIPE_PRO_PRICE_ID
-  },
-  enterprise: {
-    name: 'Enterprise',
-    price: 99,
-    currency: 'USD',
-    interval: 'month',
-    features: [
-      'Everything in Pro',
-      'Unlimited team members',
+      'Export to PDF/CSV',
       'Advanced analytics',
+      'Team collaboration (up to 5 members)',
       'API access',
-      'Custom integrations',
-      'Dedicated support',
-      'SLA guarantees'
+      'Historical data tracking'
     ],
     limits: {
-      analysesPerMonth: -1, // Unlimited
-      teamMembers: -1, // Unlimited
+      monthlyAnalyses: -1, // Unlimited
+      aiInsights: -1, // Unlimited
+      exportReports: -1, // Unlimited
       prioritySupport: true,
-      customReports: true
-    },
-    stripePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID
+      customReports: true,
+      apiAccess: true,
+      teamCollaboration: true
+    }
   }
 };
 
@@ -69,50 +61,62 @@ export function getTierConfig(tier: Tier): TierConfig {
   return TIER_CONFIGS[tier];
 }
 
-// Get display name for tier
+// Get tier display name
 export function getTierDisplayName(tier: Tier): string {
-  return TIER_CONFIGS[tier].name;
+  return TIER_CONFIGS[tier]?.name || 'Unknown';
 }
 
 // Format price for display
 export function formatPrice(price: number, currency: string = 'USD'): string {
+  if (price === 0) return 'Free';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency,
-  }).format(price);
+  }).format(price / 100); // Convert cents to dollars
 }
 
-// Get tier features
+// Get tier features for display
 export function getTierFeatures(tier: Tier): string[] {
-  return TIER_CONFIGS[tier].features;
+  return TIER_CONFIGS[tier]?.features || [];
 }
 
-// Check if tier has unlimited analyses
-export function hasUnlimitedAnalyses(tier: Tier): boolean {
-  return TIER_CONFIGS[tier].limits.analysesPerMonth === -1;
+// Check if tier is paid
+export function isPaidTier(tier: Tier): boolean {
+  return tier !== 'free';
 }
 
-// Get analyses limit for tier
-export function getAnalysesLimit(tier: Tier): number {
-  return TIER_CONFIGS[tier].limits.analysesPerMonth;
+// Get next available tier
+export function getNextTier(currentTier: Tier): Tier | null {
+  const tierOrder: Tier[] = ['free', 'pro'];
+  const currentIndex = tierOrder.indexOf(currentTier);
+  
+  if (currentIndex === -1 || currentIndex === tierOrder.length - 1) {
+    return null;
+  }
+  
+  return tierOrder[currentIndex + 1];
 }
 
-// Check if tier has priority support
-export function hasPrioritySupport(tier: Tier): boolean {
-  return TIER_CONFIGS[tier].limits.prioritySupport || false;
+// Check if tier upgrade is available
+export function canUpgradeTier(currentTier: Tier): boolean {
+  return getNextTier(currentTier) !== null;
 }
 
-// Check if tier has custom reports
-export function hasCustomReports(tier: Tier): boolean {
-  return TIER_CONFIGS[tier].limits.customReports || false;
+// Check if tier downgrade is available
+export function canDowngradeTier(currentTier: Tier): boolean {
+  const tierOrder: Tier[] = ['free', 'pro'];
+  const currentIndex = tierOrder.indexOf(currentTier);
+  return currentIndex > 0;
 }
 
-// Get team member limit for tier
-export function getTeamMemberLimit(tier: Tier): number {
-  return TIER_CONFIGS[tier].limits.teamMembers || 0;
-}
-
-// Check if tier has unlimited team members
-export function hasUnlimitedTeamMembers(tier: Tier): boolean {
-  return TIER_CONFIGS[tier].limits.teamMembers === -1;
+// Get previous tier
+export function getPreviousTier(currentTier: Tier): Tier | null {
+  const tierOrder: Tier[] = ['free', 'pro'];
+  const currentIndex = tierOrder.indexOf(currentTier);
+  
+  if (currentIndex <= 0) {
+    return null;
+  }
+  
+  return tierOrder[currentIndex - 1];
 }

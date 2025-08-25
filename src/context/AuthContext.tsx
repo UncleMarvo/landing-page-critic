@@ -10,6 +10,7 @@ export interface User {
   image?: string;
   emailVerified?: Date;
   createdAt: Date;
+  tier?: string; // Add tier for subscription-based access control
 }
 
 // Authentication context interface
