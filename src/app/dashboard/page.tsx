@@ -7,6 +7,16 @@ import { useAuth } from "@/context/AuthContext";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { 
+  BarChart3, 
+  RefreshCw, 
+  User, 
+  LogOut, 
+  Settings,
+  ChevronDown,
+  Globe
+} from "lucide-react";
 
 /* Card Components */
 import BestPracticesCard from "@/components/cards/bestpracticescard";
@@ -19,6 +29,7 @@ import ExportReportCard from "@/components/cards/exportreportcard";
 import WebVitalsCard from "@/components/cards/webvitalscard";
 import AIInsightsCard from "@/components/cards/aiinsightscard";
 import UrlInput from "@/components/ui/url-input";
+import SubscriptionCard from "@/components/payments/SubscriptionCard";
 
 interface LighthouseCategory {
   id: string;
@@ -106,6 +117,7 @@ function DashboardContent({
   } = useDashboard();
   
   const { user, logout } = useAuth();
+  const { setResult } = useResults();
   
   // Local state for the history chart (separate from context history)
   const [history, setHistory] = useState<any[]>([]);
@@ -120,6 +132,53 @@ function DashboardContent({
       setCurrentUrl(result.url);
     }
   }, [result?.url, setCurrentUrl]);
+
+  // Check for pending URL analysis on dashboard load
+  useEffect(() => {
+    const checkPendingAnalysis = async () => {
+      const pendingUrl = localStorage.getItem('pendingAnalysisUrl');
+      
+      if (pendingUrl && !result) {
+        console.log('Found pending URL for analysis:', pendingUrl);
+        
+        try {
+          // Clear the pending URL immediately to prevent duplicate analysis
+          localStorage.removeItem('pendingAnalysisUrl');
+          
+          // Set the current URL
+          setCurrentUrl(pendingUrl);
+          
+          // Perform the analysis
+          const res = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: pendingUrl }),
+          });
+          
+          if (res.ok) {
+            const data = await res.json();
+            setResult(data); // Save analysis globally
+            console.log('Automatic analysis completed for:', pendingUrl);
+            
+            // Show fallback notification if using fallback data
+            if (data.fallback) {
+              console.log('Using fallback data:', data.message);
+              // You could add a toast notification here if you have a notification system
+            }
+          } else {
+            console.error('Failed to analyze pending URL:', pendingUrl);
+          }
+        } catch (error) {
+          console.error('Error analyzing pending URL:', error);
+        }
+      }
+    };
+
+    // Only check for pending analysis if user is authenticated and no current result
+    if (user && !result) {
+      checkPendingAnalysis();
+    }
+  }, [user, result, setCurrentUrl, setResult]);
 
   // Fetch general history data for the history chart (separate from context)
   useEffect(() => {
@@ -153,129 +212,179 @@ function DashboardContent({
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Lighthouse Dashboard</h1>
-        <div className="flex items-center space-x-4">
-          {currentUrl && (
-            <span className="text-sm text-gray-600">
-              Analyzing: <span className="font-mono">{currentUrl}</span>
-            </span>
-          )}
-          <Button 
-            onClick={refreshData}
-            disabled={isLoading || !currentUrl}
-            className="px-4 py-2"
-          >
-            {isLoading ? "Refreshing..." : "Refresh Data"}
-          </Button>
-          
-          {/* User Menu */}
-          <div className="relative">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center space-x-2 px-3 py-2 rounded-md hover:bg-gray-100"
-            >
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
-              </div>
-              <span className="text-sm font-medium text-gray-700">
-                {user?.name || user?.email}
-              </span>
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-            
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <div className="px-4 py-2 text-sm text-gray-700 border-b">
-                  <div className="font-medium">{user?.name}</div>
-                  <div className="text-gray-500">{user?.email}</div>
+    <div className="min-h-screen bg-background">
+      {/* Enhanced Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container-responsive">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <BarChart3 className="h-5 w-5 text-primary-foreground" />
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Sign out
-                </button>
+                <span className="text-xl font-bold text-foreground">Dashboard</span>
               </div>
-            )}
+              {currentUrl && (
+                <div className="hidden md:flex items-center space-x-2 text-sm text-muted-foreground">
+                  <Globe className="h-4 w-4" />
+                  <span className="font-mono max-w-xs truncate">{currentUrl}</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <ThemeToggle />
+              
+              <Button 
+                onClick={refreshData}
+                disabled={isLoading || !currentUrl}
+                variant="outline"
+                size="sm"
+                className="btn-secondary"
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? "Refreshing..." : "Refresh"}
+              </Button>
+              
+              {/* Enhanced User Menu */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+                >
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground text-sm font-medium">
+                    {user?.name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-medium text-foreground">
+                      {user?.name || 'User'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-64 bg-card rounded-lg shadow-lg border py-2 z-50">
+                    <div className="px-4 py-3 border-b">
+                      <div className="font-medium text-foreground">{user?.name}</div>
+                      <div className="text-sm text-muted-foreground">{user?.email}</div>
+                    </div>
+                    <div className="py-1">
+                      <button className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+                        <User className="mr-3 h-4 w-4" />
+                        Profile
+                      </button>
+                      <button className="flex items-center w-full px-4 py-2 text-sm text-muted-foreground hover:bg-muted transition-colors">
+                        <Settings className="mr-3 h-4 w-4" />
+                        Settings
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <LogOut className="mr-3 h-4 w-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* URL Input for switching between different URLs */}
-      <UrlInput className="mb-6" />
+      {/* Main Content */}
+      <main className="container-responsive py-8 space-y-8">
+        {/* URL Input for switching between different URLs */}
+        <UrlInput className="mb-6" />
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading dashboard data...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Dashboard Content */}
-      {!isLoading && (
-        <>
-          {/* Export Report */}
-          <ExportReportCard data={result} />
-
-          {/* AI-Powered Insights */}
-          <AIInsightsCard />
-
-          {/* Category Scores */}
-          <CategoryScoresCard />
-
-          {/* Web Vitals - Now uses context data */}
-          <WebVitalsCard />
-
-          {/* Performance Metrics - Now uses context data */}
-          <PerformanceMetricsCard />
-
-          {/* Recommendations */}
-          <RecommendationsCard />
-
-          {/* Accessibility */}
-          <AccessibilityCard />
-
-          {/* Opportunities */}
-          <OpportunitiesCard />
-
-          {/* Best Practices */}
-          <BestPracticesCard />
-        </>
-      )}
-
-      {/* Context Data Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl font-bold">Dashboard Context Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-3 bg-gray-50 rounded">
-              <p className="text-sm text-gray-600">Current URL</p>
-              <p className="font-mono text-sm">{currentUrl || "Not set"}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded">
-              <p className="text-sm text-gray-600">Web Vitals Data</p>
-              <p className="text-sm">{webVitalsData ? `${webVitalsData.length} metrics` : "No data"}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded">
-              <p className="text-sm text-gray-600">Performance History</p>
-              <p className="text-sm">{performanceHistory ? `${performanceHistory.length} entries` : "No data"}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded">
-              <p className="text-sm text-gray-600">Loading State</p>
-              <p className="text-sm">{isLoading ? "Loading..." : "Ready"}</p>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center space-y-4">
+              <div className="loading-spinner h-12 w-12 border-primary mx-auto"></div>
+              <p className="text-muted-foreground">Loading dashboard data...</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {/* Dashboard Content */}
+        {!isLoading && (
+          <div className="space-y-8">
+            {/* Subscription Management */}
+            <SubscriptionCard className="mb-6" />
+
+            {/* Export Report */}
+            <ExportReportCard data={result} />
+
+            {/* AI-Powered Insights */}
+            <AIInsightsCard />
+
+            {/* Category Scores */}
+            <CategoryScoresCard />
+
+            {/* Web Vitals - Now uses context data */}
+            <WebVitalsCard />
+
+            {/* Performance Metrics - Now uses context data */}
+            <PerformanceMetricsCard />
+
+            {/* Recommendations */}
+            <RecommendationsCard />
+
+            {/* Accessibility */}
+            <AccessibilityCard />
+
+            {/* Opportunities */}
+            <OpportunitiesCard />
+
+            {/* Best Practices */}
+            <BestPracticesCard />
+          </div>
+        )}
+
+        {/* Context Data Status - Enhanced */}
+        <Card className="card-hover">
+          <CardHeader>
+            <CardTitle className="h4 flex items-center space-x-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <span>Dashboard Context Status</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 bg-muted/50 rounded-lg border">
+                <p className="text-sm text-muted-foreground mb-1">Current URL</p>
+                <p className="font-mono text-sm text-foreground truncate">
+                  {currentUrl || "Not set"}
+                </p>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg border">
+                <p className="text-sm text-muted-foreground mb-1">Web Vitals Data</p>
+                <p className="text-sm font-medium text-foreground">
+                  {webVitalsData ? `${webVitalsData.length} metrics` : "No data"}
+                </p>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg border">
+                <p className="text-sm text-muted-foreground mb-1">Performance History</p>
+                <p className="text-sm font-medium text-foreground">
+                  {performanceHistory ? `${performanceHistory.length} entries` : "No data"}
+                </p>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg border">
+                <p className="text-sm text-muted-foreground mb-1">Loading State</p>
+                <p className="text-sm font-medium text-foreground">
+                  {isLoading ? "Loading..." : "Ready"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
     </div>
   );
 }

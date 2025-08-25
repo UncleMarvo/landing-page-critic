@@ -38,13 +38,24 @@ model User {
   resetToken        String?   @unique
   resetExpires      DateTime?
   
+  // Subscription fields
+  tier              String    @default("free") // 'free', 'basic', 'pro'
+  stripeCustomerId  String?   @unique
+  stripeSubscriptionId String? @unique
+  subscriptionStatus String   @default("inactive") // 'active', 'canceled', 'past_due', 'incomplete', 'incomplete_expired', 'trialing', 'unpaid'
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean   @default(false)
+  
   // Relations
   auditResults      AuditResult[]
   history           History[]
   aiInsights        AIInsight[]
+  invoices          Invoice[]
   
   @@index([email])
   @@index([oauthProvider, oauthId])
+  @@index([tier])
+  @@index([subscriptionStatus])
 }
 
 model AuditResult {
@@ -111,4 +122,24 @@ model AIInsight {
   @@index([status])
   @@index([severity])
   @@index([category])
+}
+
+// Invoice model for billing history
+model Invoice {
+  id                String   @id @default(cuid())
+  stripeInvoiceId   String   @unique
+  amount            Int      // Amount in cents
+  currency          String   @default("usd")
+  status            String   // 'draft', 'open', 'paid', 'uncollectible', 'void'
+  invoicePdf        String?  // URL to PDF
+  hostedInvoiceUrl  String?  // URL to hosted invoice
+  createdAt         DateTime @default(now())
+  
+  // User relation
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   BarChart,
   Bar,
@@ -11,13 +12,15 @@ import {
   Cell,
 } from "recharts";
 import { useDashboard } from "@/context/DashboardContext";
-import { Button } from "@/components/ui/button";
+import { Activity, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
 
 // Type definition for Web Vitals data
 type WebVitalsPanelProps = {
   id: string;
   title: string;
   value?: number;
+  unit?: string;
+  level?: string;
 };
 
 // Define the full list of metrics we want to display
@@ -32,6 +35,41 @@ const defaultMetrics: WebVitalsPanelProps[] = [
   { id: "inp", title: "Interaction to Next Paint" },
 ];
 
+// Helper function to get status color and icon
+const getStatusInfo = (level: string) => {
+  switch (level) {
+    case "good":
+      return { color: "text-success", bgColor: "bg-success/10", icon: CheckCircle };
+    case "needs-improvement":
+      return { color: "text-warning", bgColor: "bg-warning/10", icon: AlertTriangle };
+    case "poor":
+      return { color: "text-error", bgColor: "bg-error/10", icon: AlertTriangle };
+    default:
+      return { color: "text-muted-foreground", bgColor: "bg-muted", icon: Activity };
+  }
+};
+
+// Helper function to determine status based on metric value and target
+const getMetricStatus = (metricId: string, value: number): string => {
+  const targets: Record<string, { good: number; needsImprovement: number }> = {
+    fcp: { good: 1800, needsImprovement: 3000 },
+    lcp: { good: 2500, needsImprovement: 4000 },
+    cls: { good: 0.1, needsImprovement: 0.25 },
+    tbt: { good: 200, needsImprovement: 600 },
+    si: { good: 3400, needsImprovement: 5800 },
+    fid: { good: 100, needsImprovement: 300 },
+    tti: { good: 3800, needsImprovement: 7300 },
+    inp: { good: 200, needsImprovement: 500 },
+  };
+
+  const target = targets[metricId];
+  if (!target) return "unknown";
+
+  if (value <= target.good) return "good";
+  if (value <= target.needsImprovement) return "needs-improvement";
+  return "poor";
+};
+
 export default function WebVitalsCard() {
   // Get data from DashboardContext
   const { webVitalsData, isLoading, refreshData } = useDashboard();
@@ -39,25 +77,30 @@ export default function WebVitalsCard() {
   // Handle loading state
   if (isLoading) {
     return (
-      <Card>
+      <Card className="card-hover">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+            <CardTitle className="h4 flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <span>Web Vitals</span>
+            </CardTitle>
             <Button 
               onClick={refreshData}
               disabled={isLoading}
               size="sm"
               variant="outline"
+              className="btn-secondary"
             >
-              {isLoading ? "Refreshing..." : "Refresh"}
+              <div className="loading-spinner h-4 w-4 mr-2"></div>
+              Refreshing...
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-              <p className="text-gray-600 text-sm">Loading Web Vitals data...</p>
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center space-y-4">
+              <div className="loading-spinner h-12 w-12 border-primary mx-auto"></div>
+              <p className="text-muted-foreground">Loading Web Vitals data...</p>
             </div>
           </div>
         </CardContent>
@@ -68,25 +111,42 @@ export default function WebVitalsCard() {
   // Handle empty data state
   if (!webVitalsData || webVitalsData.length === 0) {
     return (
-      <Card>
+      <Card className="card-hover">
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+            <CardTitle className="h4 flex items-center space-x-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <span>Web Vitals</span>
+            </CardTitle>
             <Button 
               onClick={refreshData}
               disabled={isLoading}
               size="sm"
               variant="outline"
+              className="btn-secondary"
             >
               {isLoading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center p-8">
-            <div className="text-center">
-              <p className="text-gray-500">No Web Vitals data available</p>
-              <p className="text-gray-400 text-sm">Enter a URL to analyze and view Web Vitals metrics</p>
+          <div className="flex items-center justify-center p-12">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto">
+                <AlertTriangle className="h-8 w-8 text-warning" />
+              </div>
+              <div>
+                <p className="text-foreground font-medium">Web Vitals data not available</p>
+                <p className="text-muted-foreground text-sm">
+                  Lighthouse analysis failed to collect Web Vitals metrics due to browser tracing conflicts. 
+                  This is a known issue with the current Lighthouse setup.
+                </p>
+                <div className="mt-4 p-3 bg-muted/30 rounded-lg text-xs text-muted-foreground">
+                  <p className="font-medium mb-1">Technical Details:</p>
+                  <p>Error: TRACING_ALREADY_STARTED</p>
+                  <p>Web Vitals require browser performance traces that could not be collected.</p>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -98,160 +158,149 @@ export default function WebVitalsCard() {
   const data = webVitalsData || [];
   
   // Merge incoming data with defaults, keeping missing metrics
-  const mergedData = defaultMetrics.map((metric) => {
-    const found = data.find((d) => d.id.toLowerCase() === metric.id);
-    return { ...metric, value: found?.value };
+  const mergedData: WebVitalsPanelProps[] = defaultMetrics.map(metric => {
+    const found = data.find((item: any) => item.id === metric.id);
+    return found || { ...metric, value: undefined, unit: '', level: undefined };
   });
 
-  const metricUnit = (id: string) => (id === "cls" ? "" : "ms");
+  // Prepare data for chart
+  const chartData = mergedData
+    .filter(item => item.value !== undefined)
+    .map(item => ({
+      name: item.title,
+      value: item.value,
+      level: getMetricStatus(item.id, item.value!),
+      unit: item.unit || ''
+    }));
 
-  const classifyVital = (
-    id: string,
-    value?: number
-  ): "good" | "needs-improvement" | "poor" | undefined => {
-    if (value === undefined) return undefined;
-
-    switch (id.toLowerCase()) {
-      case "fcp":
-        if (value <= 1800) return "good";
-        if (value <= 3000) return "needs-improvement";
-        return "poor";
-      case "lcp":
-        if (value <= 2500) return "good";
-        if (value <= 4000) return "needs-improvement";
-        return "poor";
-      case "cls":
-        if (value <= 0.1) return "good";
-        if (value <= 0.25) return "needs-improvement";
-        return "poor";
-      case "tbt":
-        if (value <= 200) return "good";
-        if (value <= 600) return "needs-improvement";
-        return "poor";
-      case "si":
-        if (value <= 3400) return "good";
-        if (value <= 5800) return "needs-improvement";
-        return "poor";
-      case "fid":
-      case "tti":
-      case "inp":
-        if (value <= 100) return "good";
-        if (value <= 300) return "needs-improvement";
-        return "poor";
-      default:
-        return "needs-improvement";
+  // Color mapping for chart bars
+  const getBarColor = (level: string) => {
+    switch (level) {
+      case "good": return "hsl(var(--success))";
+      case "needs-improvement": return "hsl(var(--warning))";
+      case "poor": return "hsl(var(--error))";
+      default: return "hsl(var(--muted-foreground))";
     }
   };
 
-  const vitalColor = (level?: string) => {
-    if (level === "good") return "text-green-600";
-    if (level === "needs-improvement") return "text-yellow-600";
-    if (level === "poor") return "text-red-600";
-    return "text-gray-400";
-  };
-
-  const processedData = mergedData.map((v) => ({
-    ...v,
-    unit: metricUnit(v.id),
-    level: classifyVital(v.id, v.value),
-    displayValue: v.value !== undefined ? Math.round(v.value) : "--",
-  }));
-
   return (
-    <Card>
+    <Card className="card-hover">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+          <CardTitle className="h4 flex items-center space-x-2">
+            <Activity className="h-5 w-5 text-primary" />
+            <span>Web Vitals</span>
+          </CardTitle>
           <Button 
             onClick={refreshData}
             disabled={isLoading}
             size="sm"
             variant="outline"
+            className="btn-secondary"
           >
             {isLoading ? "Refreshing..." : "Refresh"}
           </Button>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="grid grid-cols-2 gap-4">
-              {processedData.map((v) => (
-                <div
-                  key={v.id}
-                  className="category-card p-4 bg-gray-50 rounded-lg shadow"
-                >
-                  <h3 className="text-md font-semibold">{v.title}</h3>
-                  <p className={`text-2xl font-bold ${vitalColor(v.level)}`}>
-                    {v.displayValue} {v.unit} {v.level ? `(${v.level})` : ""}
-                  </p>
-                </div>
-              ))}
+      <CardContent className="space-y-6">
+        {/* Chart Section */}
+        {chartData.length > 0 && (
+          <div className="space-y-4">
+            <h4 className="h5 text-foreground">Performance Overview</h4>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <XAxis 
+                    dataKey="name" 
+                    tick={{ fontSize: 12 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value: any, name: any, props: any) => [
+                      `${value}${props.payload.unit || ''}`,
+                      props.payload.name
+                    ]}
+                  />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={getBarColor(entry.level)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
+        )}
 
-          <div className="flex-1">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={processedData.filter((v) => v.value !== undefined)}>
-                <XAxis dataKey="title" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="value">
-                  {processedData.map((entry, index) => {
-                    if (entry.value === undefined) return null;
-
-                    let color = "#ef4444"; // default red
-                    switch (entry.id.toLowerCase()) {
-                      case "fcp":
-                        if (entry.value <= 1800) color = "#16a34a";
-                        else if (entry.value <= 3000) color = "#eab308";
-                        break;
-                      case "lcp":
-                        if (entry.value <= 2500) color = "#16a34a";
-                        else if (entry.value <= 4000) color = "#eab308";
-                        break;
-                      case "tbt":
-                        if (entry.value <= 200) color = "#16a34a";
-                        else if (entry.value <= 600) color = "#eab308";
-                        break;
-                      case "cls":
-                        if (entry.value <= 0.1) color = "#16a34a";
-                        else if (entry.value <= 0.25) color = "#eab308";
-                        break;
-                      case "si":
-                        if (entry.value <= 3400) color = "#16a34a";
-                        else if (entry.value <= 5800) color = "#eab308";
-                        break;
-                      case "fid":
-                      case "tti":
-                      case "inp":
-                        if (entry.value <= 100) color = "#16a34a";
-                        else if (entry.value <= 300) color = "#eab308";
-                        break;
-                    }
-
-                    return <Cell key={`cell-${index}`} fill={color} />;
-                  })}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-
-            <div className="flex justify-center gap-6 mt-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-green-600"></span>
-                <span>Good</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-yellow-500"></span>
-                <span>Needs Improvement</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                <span>Poor</span>
-              </div>
-            </div>
+        {/* Metrics Grid */}
+        <div className="space-y-4">
+          <h4 className="h5 text-foreground">Detailed Metrics</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mergedData.map((metric) => {
+              // Determine status based on metric value
+              const status = metric.value !== undefined ? getMetricStatus(metric.id, metric.value) : 'unknown';
+              const statusInfo = getStatusInfo(status);
+              const StatusIcon = statusInfo.icon;
+              
+              return (
+                <div 
+                  key={metric.id}
+                  className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-sm ${statusInfo.bgColor}`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <h5 className="text-sm font-medium text-foreground leading-tight">
+                      {metric.title}
+                    </h5>
+                    <StatusIcon className={`h-4 w-4 ${statusInfo.color} flex-shrink-0`} />
+                  </div>
+                  
+                  {metric.value !== undefined ? (
+                    <div className="space-y-1">
+                      <p className="text-2xl font-bold text-foreground">
+                        {metric.value}
+                        <span className="text-sm font-normal text-muted-foreground ml-1">
+                          {metric.unit}
+                        </span>
+                      </p>
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color}`}>
+                          {status.replace('-', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <p className="text-lg text-muted-foreground">No data</p>
+                      <p className="text-xs text-muted-foreground">Metric not available</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
+
+        {/* Summary */}
+        {chartData.length > 0 && (
+          <div className="p-4 bg-muted/30 rounded-lg border">
+            <div className="flex items-center space-x-2 mb-2">
+              <TrendingUp className="h-4 w-4 text-primary" />
+              <h5 className="text-sm font-medium text-foreground">Performance Summary</h5>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {chartData.filter(item => item.level === 'good').length} of {chartData.length} metrics are performing well. 
+              Focus on improving the metrics marked as "needs improvement" or "poor" for better user experience.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

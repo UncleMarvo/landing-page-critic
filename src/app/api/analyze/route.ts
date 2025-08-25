@@ -11,10 +11,15 @@ export async function POST(req: NextRequest) {
 
     // Fetch metrics from all enabled platforms
     const platformData = await fetchAllPlatformMetrics(url);
-    console.log('Platform data received:', platformData.map(p => ({ platform: p.platform, error: p.error, metricsCount: p.metrics.length })));
+    console.log('Platform data received:', platformData.map(p => ({ 
+      platform: p.platform, 
+      error: p.error, 
+      metricsCount: p.metrics.length,
+      isFallback: p.platform === 'fallback'
+    })));
     
-    // Check if we have any successful results
-    const successfulPlatforms = platformData.filter(data => !data.error);
+    // Check if we have any successful results or fallback data
+    const successfulPlatforms = platformData.filter(data => !data.error || data.platform === 'fallback');
     console.log('Successful platforms:', successfulPlatforms.map(p => p.platform));
     
     if (successfulPlatforms.length === 0) {
@@ -60,7 +65,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ 
+    const response = { 
       url,
       analyzedAt: new Date(),
       platforms: consolidatedData.platforms,
@@ -70,7 +75,21 @@ export async function POST(req: NextRequest) {
       recommendations: legacyData.recommendations,
       accessibility: legacyData.accessibility,
       bestPractices: legacyData.bestPractices,
-    });
+    };
+
+    // Add fallback indicator if using fallback data
+    if (platformData.some(p => p.platform === 'fallback')) {
+      response.fallback = true;
+      response.message = 'Using fallback data due to platform issues';
+    }
+
+    // Check if Web Vitals data is missing and add warning
+    if (!response.webVitals || response.webVitals.length === 0) {
+      response.webVitalsWarning = true;
+      response.webVitalsMessage = 'Web Vitals data could not be collected due to Lighthouse tracing conflicts';
+    }
+
+    return NextResponse.json(response);
 
   } catch (error: any) {
     console.error("Analyze API error:", error);

@@ -9,6 +9,13 @@ const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
+// Log JWT configuration (remove in production)
+console.log('JWT Configuration:', {
+  secretSet: !!JWT_SECRET,
+  expiresIn: JWT_EXPIRES_IN,
+  secretLength: JWT_SECRET?.length
+});
+
 // Email verification token expiry (24 hours)
 const VERIFICATION_EXPIRES_IN = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
@@ -34,8 +41,11 @@ export function generateToken(payload: any): string {
 // Verify JWT token
 export function verifyToken(token: string): any {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('Token verification successful:', { userId: (decoded as any)?.userId });
+    return decoded;
   } catch (error) {
+    console.error('Token verification failed:', error);
     return null;
   }
 }
@@ -45,18 +55,41 @@ export function generateRandomToken(): string {
   return randomBytes(32).toString('hex');
 }
 
-// Set HTTP-only cookie with JWT token
+// Set HTTP-only cookie with JWT token for Next.js App Router
 export function setAuthCookie(res: any, token: string): void {
-  res.setHeader('Set-Cookie', [
-    `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure=${process.env.NODE_ENV === 'production'}`
-  ]);
+  if (res && typeof res.cookies === 'object') {
+    // Next.js App Router - NextResponse
+    res.cookies.set('auth-token', token, {
+      httpOnly: true,
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production'
+    });
+  } else if (res && typeof res.setHeader === 'function') {
+    // Standard Node.js response (for compatibility)
+    res.setHeader('Set-Cookie', [
+      `auth-token=${token}; HttpOnly; Path=/; Max-Age=${7 * 24 * 60 * 60}; SameSite=Strict; Secure=${process.env.NODE_ENV === 'production'}`
+    ]);
+  }
 }
 
-// Clear auth cookie
+// Clear auth cookie for Next.js App Router
 export function clearAuthCookie(res: any): void {
-  res.setHeader('Set-Cookie', [
-    'auth-token=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict'
-  ]);
+  if (res && typeof res.cookies === 'object') {
+    // Next.js App Router - NextResponse
+    res.cookies.set('auth-token', '', {
+      httpOnly: true,
+      path: '/',
+      maxAge: 0,
+      sameSite: 'strict'
+    });
+  } else if (res && typeof res.setHeader === 'function') {
+    // Standard Node.js response (for compatibility)
+    res.setHeader('Set-Cookie', [
+      'auth-token=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict'
+    ]);
+  }
 }
 
 // Get user from token (for API routes)
@@ -250,9 +283,10 @@ export async function authenticateUser(email: string, password: string) {
     }
 
     // Check if email is verified (optional - you can remove this check)
-    if (!user.emailVerified) {
-      throw new Error('Please verify your email before logging in');
-    }
+    // Temporarily disabled for development - users can log in without email verification
+    // if (!user.emailVerified) {
+    //   throw new Error('Please verify your email before logging in');
+    // }
 
     // Compare password
     const isValidPassword = await comparePassword(password, user.password);

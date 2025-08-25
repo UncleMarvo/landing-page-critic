@@ -5,9 +5,21 @@ import Link from "next/link";
 import { useResults } from "@/context/ResultsContext";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { 
+  BarChart3, 
+  Zap, 
+  CheckCircle, 
+  ArrowRight, 
+  Sparkles,
+  Globe,
+  Shield,
+  TrendingUp
+} from "lucide-react";
 
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const { setResult } = useResults();
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -22,49 +34,69 @@ export default function Home() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    // If user is not authenticated, redirect to login
+    // If user is not authenticated, store URL and redirect to login
     if (!user) {
+      // Store the URL in localStorage for later analysis
+      localStorage.setItem('pendingAnalysisUrl', url);
       router.push('/auth/login');
       return;
     }
 
-    const res = await fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url }),
-    });
-    const data = await res.json();
-    setResult(data); // ✅ Save analysis globally
-    router.push("/dashboard"); // ✅ Navigate to dashboard
+    // If user is authenticated, proceed with analysis
+    setIsAnalyzing(true);
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      setResult(data); // ✅ Save analysis globally
+      router.push("/dashboard"); // ✅ Navigate to dashboard
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setIsAnalyzing(false);
+    }
   }
 
   // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <div className="loading-spinner h-12 w-12 border-primary mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Navigation */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">Landing Page Critic</h1>
+    <main className="min-h-screen bg-background">
+      {/* Enhanced Navigation */}
+      <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container-responsive">
+          <div className="flex h-16 items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+                  <BarChart3 className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <span className="text-xl font-bold text-foreground">Landing Page Critic</span>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
+              <ThemeToggle />
               <Link href="/auth/login">
-                <Button variant="outline">Sign In</Button>
+                <Button variant="ghost" className="hidden sm:inline-flex">
+                  Sign In
+                </Button>
               </Link>
               <Link href="/auth/signup">
-                <Button>Get Started</Button>
+                <Button className="btn-primary">
+                  Get Started
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </Link>
             </div>
           </div>
@@ -72,88 +104,181 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center">
-          <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-            Analyze Your Landing Pages
-          </h1>
-          <p className="mt-3 max-w-md mx-auto text-base text-gray-500 sm:text-lg md:mt-5 md:text-xl md:max-w-3xl">
-            Get comprehensive performance insights, accessibility scores, and AI-powered recommendations to optimize your landing pages.
-          </p>
+      <section className="relative overflow-hidden py-20 sm:py-32">
+        <div className="container-responsive">
+          <div className="text-center space-y-8">
+            <div className="space-y-4">
+              <h1 className="h1 text-balance">
+                Analyze Your Landing Pages with{" "}
+                <span className="bg-gradient-to-r from-primary to-primary-hover bg-clip-text text-transparent">
+                  AI-Powered Insights
+                </span>
+              </h1>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto text-balance">
+                Get comprehensive performance insights, accessibility scores, and intelligent recommendations 
+                to optimize your landing pages for better user experience and conversions.
+              </p>
+            </div>
+            
+            {/* Enhanced URL Input Form */}
+            <div className="max-w-2xl mx-auto">
+              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="Enter a landing page URL (e.g., https://example.com)"
+                    className="input-field w-full"
+                    disabled={isAnalyzing}
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  className="btn-primary px-8"
+                  disabled={isAnalyzing || !url.trim()}
+                >
+                  {isAnalyzing ? (
+                    <>
+                      <div className="loading-spinner h-4 w-4 border-white mr-2"></div>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Analyze
+                    </>
+                  )}
+                </Button>
+              </form>
+              <p className="mt-3 text-sm text-muted-foreground">
+                {user 
+                  ? (isAnalyzing ? 'Analyzing your landing page...' : 'Ready to analyze')
+                  : 'Sign in to automatically analyze this URL'
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="py-20 bg-muted/30">
+        <div className="container-responsive">
+          <div className="text-center mb-16">
+            <h2 className="h2 mb-4">Everything you need to optimize your landing pages</h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Comprehensive analysis tools designed for developers, marketers, and business owners
+            </p>
+          </div>
           
-          {/* URL Input Form */}
-          <div className="mt-8 max-w-lg mx-auto">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="Enter a landing page URL"
-                className="flex-1 border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <Button type="submit" className="px-6">
-                Analyze
-              </Button>
-            </form>
-            <p className="mt-2 text-sm text-gray-500">
-              You'll be prompted to sign in to view detailed results
+          <div className="grid-responsive">
+            <div className="group card-hover p-6 bg-card rounded-xl border">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 text-primary mb-4 group-hover:bg-primary/20 transition-colors">
+                <BarChart3 className="h-6 w-6" />
+              </div>
+              <h3 className="h5 mb-2">Performance Metrics</h3>
+              <p className="text-muted-foreground">
+                Get detailed performance scores including Core Web Vitals, Lighthouse metrics, and real-world user data.
+              </p>
+            </div>
+
+            <div className="group card-hover p-6 bg-card rounded-xl border">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-success/10 text-success mb-4 group-hover:bg-success/20 transition-colors">
+                <Zap className="h-6 w-6" />
+              </div>
+              <h3 className="h5 mb-2">AI-Powered Insights</h3>
+              <p className="text-muted-foreground">
+                Receive intelligent recommendations and actionable insights to improve your pages with machine learning.
+              </p>
+            </div>
+
+            <div className="group card-hover p-6 bg-card rounded-xl border">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-warning/10 text-warning mb-4 group-hover:bg-warning/20 transition-colors">
+                <CheckCircle className="h-6 w-6" />
+              </div>
+              <h3 className="h5 mb-2">Accessibility Analysis</h3>
+              <p className="text-muted-foreground">
+                Ensure your pages are accessible to all users with comprehensive accessibility testing and compliance checks.
+              </p>
+            </div>
+
+            <div className="group card-hover p-6 bg-card rounded-xl border">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-info/10 text-info mb-4 group-hover:bg-info/20 transition-colors">
+                <Globe className="h-6 w-6" />
+              </div>
+              <h3 className="h5 mb-2">Multi-Platform Testing</h3>
+              <p className="text-muted-foreground">
+                Test across multiple platforms including Lighthouse, PageSpeed Insights, and WebPageTest for comprehensive coverage.
+              </p>
+            </div>
+
+            <div className="group card-hover p-6 bg-card rounded-xl border">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-error/10 text-error mb-4 group-hover:bg-error/20 transition-colors">
+                <Shield className="h-6 w-6" />
+              </div>
+              <h3 className="h5 mb-2">Security & Best Practices</h3>
+              <p className="text-muted-foreground">
+                Identify security vulnerabilities and ensure your pages follow web development best practices.
+              </p>
+            </div>
+
+            <div className="group card-hover p-6 bg-card rounded-xl border">
+              <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 text-primary mb-4 group-hover:bg-primary/20 transition-colors">
+                <TrendingUp className="h-6 w-6" />
+              </div>
+              <h3 className="h5 mb-2">Performance Tracking</h3>
+              <p className="text-muted-foreground">
+                Track performance over time with historical data and trend analysis to measure improvement.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20">
+        <div className="container-responsive">
+          <div className="text-center space-y-8">
+            <div className="space-y-4">
+              <h2 className="h2">Ready to optimize your landing pages?</h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Join thousands of developers and marketers improving their web performance and user experience.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <Link href="/auth/signup">
+                <Button size="lg" className="btn-primary">
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Start Free Analysis
+                </Button>
+              </Link>
+              <Link href="/auth/login">
+                <Button variant="outline" size="lg" className="btn-secondary">
+                  Sign In to Dashboard
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t bg-muted/30 py-12">
+        <div className="container-responsive">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="flex items-center space-x-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-primary">
+                <BarChart3 className="h-4 w-4 text-primary-foreground" />
+              </div>
+              <span className="font-semibold">Landing Page Critic</span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              © 2024 Landing Page Critic. All rights reserved.
             </p>
           </div>
         </div>
-
-        {/* Features Section */}
-        <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-blue-500 text-white">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Performance Metrics</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Get detailed performance scores including Core Web Vitals, Lighthouse metrics, and more.
-            </p>
-          </div>
-
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-green-500 text-white">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">AI-Powered Insights</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Receive intelligent recommendations and actionable insights to improve your pages.
-            </p>
-          </div>
-
-          <div className="text-center">
-            <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-md bg-purple-500 text-white">
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="mt-4 text-lg font-medium text-gray-900">Accessibility Analysis</h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Ensure your pages are accessible to all users with comprehensive accessibility testing.
-            </p>
-          </div>
-        </div>
-
-        {/* CTA Section */}
-        <div className="mt-16 text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Ready to optimize your landing pages?</h2>
-          <p className="mt-2 text-gray-500">Join thousands of developers and marketers improving their web performance.</p>
-          <div className="mt-6 flex justify-center space-x-4">
-            <Link href="/auth/signup">
-              <Button size="lg">Start Free Analysis</Button>
-            </Link>
-            <Link href="/auth/login">
-              <Button variant="outline" size="lg">Sign In</Button>
-            </Link>
-          </div>
-        </div>
-      </div>
+      </footer>
     </main>
   );
 }
