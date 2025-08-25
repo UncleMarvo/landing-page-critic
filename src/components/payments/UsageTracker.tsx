@@ -133,54 +133,57 @@ export default function UsageTracker({ tier, className = "" }: UsageTrackerProps
           </div>
         ) : (
           <>
-            {usageItems.map((item) => {
-              const Icon = item.icon;
-              const isUnlimited = item.limit === -1;
-              const remaining = isUnlimited ? -1 : getRemainingUsage(tier, item.current, item.key as any);
-              const percentage = isUnlimited ? 0 : getUsagePercentage(tier, item.current, item.key as any);
-              const isNearLimit = percentage >= 80 && !isUnlimited;
-              const isAtLimit = percentage >= 100 && !isUnlimited;
+            {/* Usage Sub-panels in a row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {usageItems.map((item) => {
+                const Icon = item.icon;
+                const isUnlimited = item.limit === -1;
+                const remaining = isUnlimited ? -1 : getRemainingUsage(tier, item.current, item.key as any);
+                const percentage = isUnlimited ? 0 : getUsagePercentage(tier, item.current, item.key as any);
+                const isNearLimit = percentage >= 80 && !isUnlimited;
+                const isAtLimit = percentage >= 100 && !isUnlimited;
 
-              return (
-                <div key={item.key} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {isUnlimited ? (
-                        <span className="text-xs text-success font-medium">Unlimited</span>
-                      ) : (
-                        <>
-                          <span className="text-xs text-muted-foreground">
-                            {item.current} / {item.limit}
-                          </span>
-                          {isNearLimit && (
-                            <AlertTriangle className="h-3 w-3 text-warning" />
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {!isUnlimited && (
-                    <div className="space-y-1">
-                      <Progress 
-                        value={percentage} 
-                        className="h-2"
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>
-                          {isAtLimit ? 'Limit reached' : `${remaining} remaining`}
-                        </span>
-                        <span>{Math.round(percentage)}%</span>
+                return (
+                  <div key={item.key} className="p-4 border rounded-lg bg-card">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center space-x-2">
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {isUnlimited ? (
+                          <span className="text-xs text-success font-medium">Unlimited</span>
+                        ) : (
+                          <>
+                            <span className="text-xs text-muted-foreground">
+                              {item.current} / {item.limit}
+                            </span>
+                            {isNearLimit && (
+                              <AlertTriangle className="h-3 w-3 text-warning" />
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    
+                    {!isUnlimited && (
+                      <div className="space-y-2">
+                        <Progress 
+                          value={percentage} 
+                          className="h-2"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>
+                            {isAtLimit ? 'Limit reached' : `${remaining} remaining`}
+                          </span>
+                          <span>{Math.round(percentage)}%</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
             
             {tier === 'free' && (
               <div className="mt-4 p-3 bg-muted/30 rounded-lg">
