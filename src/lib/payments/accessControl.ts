@@ -382,3 +382,24 @@ export function getUpgradePrompt(feature: string): string {
   
   return prompts[feature] || 'Upgrade to Pro to access this feature';
 }
+
+// Get title for restricted features
+export function getUpgradeTitle(feature: string): string {
+  const prompts: Record<string, string> = {
+    aiInsights: 'AI-Powered Insights and Recommendations',
+    exportReports: 'Export Detailed Reports',
+    scheduledReports: 'Scheduled Reports',
+    advancedMetrics: 'Advanced Performance Metrics',
+    historicalData: 'Historical Performance and Trends',
+    performanceMetrics: 'Detailed Performance Metrics',
+    detailedRecommendations: 'Detailed Recommendations',
+    multipleSiteTracking: 'Track Multiple Sites',
+    prioritySupport: 'Priority Support',
+    apiAccess: 'API Access',
+    teamCollaboration: 'Team Collaboration',
+    customReports: 'Custom Reports',
+    unlimitedAnalyses: 'Unlimited Monthly Analyses',
+  };
+  
+  return prompts[feature] || 'Upgrade to Pro to access this feature';
+}

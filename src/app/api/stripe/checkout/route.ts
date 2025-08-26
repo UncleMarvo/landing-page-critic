@@ -4,11 +4,21 @@ import { getUserFromToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user
-    const user = await getUserFromToken(request);
-    if (!user) {
+    // Get token from cookies
+    const token = request.cookies.get('auth-token')?.value;
+    
+    if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Get authenticated user
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
@@ -16,13 +26,19 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { tier } = body;
 
+    console.log('Checkout request body:', body);
+    console.log('Tier from request:', tier);
+
     if (!tier) {
+      console.log('No tier provided in request');
       return NextResponse.json(
         { error: 'Tier is required' },
         { status: 400 }
       );
     }
 
+    console.log('Creating checkout session for user:', user.id, 'tier:', tier);
+    
     // Create checkout session
     const result = await createCheckoutSession({
       userId: user.id,
@@ -32,7 +48,10 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard?canceled=true`,
     });
 
+    console.log('Checkout session result:', result);
+
     if (!result.success) {
+      console.log('Checkout session creation failed:', result.error);
       return NextResponse.json(
         { error: result.error || 'Failed to create checkout session' },
         { status: 400 }

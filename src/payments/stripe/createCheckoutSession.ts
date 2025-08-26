@@ -2,7 +2,15 @@ import Stripe from 'stripe';
 import { Tier } from '../types';
 import { getTierConfig } from '../config';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+console.log('Stripe secret key configured:', !!stripeSecretKey);
+
+if (!stripeSecretKey) {
+  console.error('STRIPE_SECRET_KEY is not configured');
+  throw new Error('Stripe secret key is not configured');
+}
+
+const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2023-10-16',
 });
 
@@ -29,13 +37,17 @@ export async function createCheckoutSession({
   cancelUrl,
 }: CreateCheckoutSessionParams): Promise<CheckoutSessionResult> {
   try {
+    console.log('Creating checkout session with params:', { userId, userEmail, tier, successUrl, cancelUrl });
+    
     // Get tier configuration
     const tierConfig = getTierConfig(tier);
+    console.log('Tier config:', tierConfig);
     
     if (!tierConfig.stripePriceId) {
+      console.error('No Stripe price ID found for tier:', tier);
       return {
         success: false,
-        error: 'Invalid tier configuration'
+        error: 'Invalid tier configuration - missing Stripe price ID'
       };
     }
 

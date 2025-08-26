@@ -8,9 +8,10 @@ import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Download, Mail, FileText, FileSpreadsheet, Crown } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, Crown } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import FeatureGate from '@/components/payments/FeatureGate';
+import { ExportUpgradePrompt } from '@/components/payments/UpgradePrompt';
 
 interface ExportStatus {
   hasAccess: boolean;
@@ -143,35 +144,11 @@ export default function ExportPanel({ url, className }: ExportPanelProps) {
   }
 
   return (
-    <FeatureGate feature="exportReports" tier={user?.tier as 'free' | 'pro'} fallback={
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            Export Reports
-            <Badge variant="secondary" className="ml-auto">
-              <Crown className="h-3 w-3 mr-1" />
-              Pro
-            </Badge>
-          </CardTitle>
-          <CardDescription>
-            Export your performance analysis data in various formats
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <Crown className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Pro Feature</h3>
-            <p className="text-gray-600 mb-4">
-              Export functionality is available for Pro users only. Upgrade to export your data in CSV or PDF format.
-            </p>
-            <Button variant="outline" className="w-full">
-              Upgrade to Pro
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    }>
+    <FeatureGate 
+      feature="exportReports" 
+      tier={user?.tier as 'free' | 'pro'}
+      fallback={<ExportUpgradePrompt className={className} />}
+    >
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">

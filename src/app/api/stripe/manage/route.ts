@@ -4,11 +4,21 @@ import { getUserFromToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get authenticated user
-    const user = await getUserFromToken(request);
-    if (!user) {
+    // Get token from cookies
+    const token = request.cookies.get('auth-token')?.value;
+    
+    if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Get authenticated user
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }
@@ -53,11 +63,21 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated user
-    const user = await getUserFromToken(request);
-    if (!user) {
+    // Get token from cookies
+    const token = request.cookies.get('auth-token')?.value;
+    
+    if (!token) {
       return NextResponse.json(
         { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // Get authenticated user
+    const user = await getUserFromToken(token);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
     }

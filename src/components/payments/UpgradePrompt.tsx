@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Zap, CheckCircle, ArrowRight } from 'lucide-react';
-import { usePayments } from '@/hooks/usePayments';
+import { useRouter } from 'next/navigation';
 import { Tier } from '@/payments/types';
 
 interface UpgradePromptProps {
@@ -32,10 +32,10 @@ export default function UpgradePrompt({
   className = "",
   variant = "default"
 }: UpgradePromptProps) {
-  const { createCheckoutSession, loading } = usePayments();
+  const router = useRouter();
 
   const handleUpgrade = () => {
-    createCheckoutSession('pro');
+    router.push('/upgrade');
   };
 
   if (variant === 'compact') {
@@ -51,11 +51,10 @@ export default function UpgradePrompt({
           </div>
           <Button 
             onClick={handleUpgrade}
-            disabled={loading}
             size="sm"
             className="bg-blue-600 hover:bg-blue-700"
           >
-            {loading ? 'Processing...' : 'Upgrade'}
+            Upgrade
           </Button>
         </div>
       </div>
@@ -69,12 +68,11 @@ export default function UpgradePrompt({
         <span className="text-muted-foreground">Pro feature</span>
         <Button 
           onClick={handleUpgrade}
-          disabled={loading}
           variant="link"
           size="sm"
           className="p-0 h-auto text-blue-600 hover:text-blue-700"
         >
-          {loading ? 'Processing...' : 'Upgrade'}
+          Upgrade
         </Button>
       </div>
     );
@@ -116,21 +114,11 @@ export default function UpgradePrompt({
         
         <Button 
           onClick={handleUpgrade}
-          disabled={loading}
           className="w-full btn-primary"
         >
-          {loading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Processing...
-            </>
-          ) : (
-            <>
-              <Zap className="mr-2 h-4 w-4" />
-              Upgrade to Pro
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </>
-          )}
+          <Zap className="mr-2 h-4 w-4" />
+          Upgrade to Pro
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </CardContent>
     </Card>
@@ -143,14 +131,7 @@ export function AIInsightsUpgradePrompt({ className = "" }: { className?: string
     <UpgradePrompt
       title="AI-Powered Insights"
       description="Get intelligent recommendations with historical context and actionable steps"
-      features={[
-        "AI-powered performance analysis",
-        "Historical context and trends",
-        "Actionable implementation steps",
-        "Priority-based recommendations",
-        "Multi-platform insights",
-        "Custom optimization strategies"
-      ]}
+      showFeatures={false}
       className={className}
     />
   );
@@ -161,14 +142,7 @@ export function HistoricalDataUpgradePrompt({ className = "" }: { className?: st
     <UpgradePrompt
       title="Historical Performance Data"
       description="Track your website's performance over time with detailed analytics"
-      features={[
-        "Performance trend analysis",
-        "Historical Web Vitals tracking",
-        "Improvement recommendations",
-        "Performance comparison tools",
-        "Custom date range analysis",
-        "Export historical data"
-      ]}
+      showFeatures={false}
       className={className}
     />
   );
@@ -179,14 +153,7 @@ export function ExportUpgradePrompt({ className = "" }: { className?: string }) 
     <UpgradePrompt
       title="Export Reports"
       description="Download comprehensive reports in PDF and CSV formats"
-      features={[
-        "PDF report generation",
-        "CSV data export",
-        "Custom report templates",
-        "Email report delivery",
-        "Scheduled report automation",
-        "Professional report branding"
-      ]}
+      showFeatures={false}
       className={className}
     />
   );

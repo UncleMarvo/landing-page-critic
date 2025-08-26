@@ -9,6 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   BarChart3,
   RefreshCw,
   User,
@@ -17,10 +25,11 @@ import {
   ChevronDown,
   Globe,
   Crown,
+  CreditCard,
+  FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import UpgradePrompt, { 
-  AIInsightsUpgradePrompt, 
   HistoricalDataUpgradePrompt, 
   ExportUpgradePrompt 
 } from "@/components/payments/UpgradePrompt";
@@ -36,9 +45,31 @@ import ExportReportCard from "@/components/cards/exportreportcard";
 import WebVitalsCard from "@/components/cards/webvitalscard";
 import AIInsightsCard from "@/components/cards/aiinsightscard";
 import UrlInput from "@/components/ui/url-input";
-import SubscriptionCard from "@/components/payments/SubscriptionCard";
+
 import UsageTracker from "@/components/payments/UsageTracker";
 import FeatureGate from "@/components/payments/FeatureGate";
+
+/*
+ * Dashboard Panel Categorization:
+ * 
+ * FREE TIER PANELS (Available to all users):
+ * - UsageTracker: Shows usage limits and remaining analyses
+ * - CategoryScoresCard: Basic performance scores (Performance, Accessibility, Best Practices, SEO)
+ * - WebVitalsCard: Core Web Vitals metrics
+ * - BestPracticesCard: Basic best practices analysis
+ * - AccessibilityCard: Basic accessibility analysis
+ * - OpportunitiesCard: Basic optimization opportunities
+ * 
+ * PRO TIER PANELS (Require Pro subscription):
+ * - PerformanceMetricsCard: Detailed performance metrics with historical data
+ * - AIInsightsCard: AI-powered insights and recommendations
+ * - RecommendationsCard: Detailed recommendations with implementation steps
+ * - ExportReportCard: PDF/CSV export functionality
+ * 
+ * Panel ordering is dynamically adjusted based on user tier:
+ * - Free users: Free panels first, then Pro panels with upgrade prompts
+ * - Pro users: All panels in original order for consistency
+ */
 
 interface LighthouseCategory {
   id: string;
@@ -114,7 +145,7 @@ function DashboardContent({
   opportunities: any[];
   bestPractices: any[];
 }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const {
     isLoading,
     refreshData,
@@ -209,19 +240,69 @@ function DashboardContent({
               </Button>
 
               {/* User Menu */}
-              <div className="relative">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center space-x-2"
-                >
-                  <User className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {user?.name || user?.email}
-                  </span>
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="flex items-center space-x-2"
+                  >
+                    <User className="h-4 w-4" />
+                    <span className="hidden sm:inline">
+                      {user?.name || user?.email}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user?.name || 'User'}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
+                      <div className="flex items-center space-x-1 mt-1">
+                        <Badge variant={user?.tier === 'pro' ? 'default' : 'secondary'} className="text-xs">
+                          {user?.tier === 'pro' ? (
+                            <>
+                              <Crown className="h-3 w-3 mr-1" />
+                              Pro
+                            </>
+                          ) : (
+                            'Free'
+                          )}
+                        </Badge>
+                      </div>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  {user?.tier === 'pro' && (
+                    <DropdownMenuItem>
+                      <CreditCard className="mr-2 h-4 w-4" />
+                      <span>Billing</span>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem>
+                    <FileText className="mr-2 h-4 w-4" />
+                    <span>Reports</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -240,64 +321,93 @@ function DashboardContent({
           </div>
         )}
 
-        {/* Stacked Layout - All panels in single column */}
+        {/* Dynamic Panel Layout - Order based on user tier */}
         <div className="space-y-6">
-          {/* Usage Tracker */}
+          {/* Usage Tracker - Always first */}
           <UsageTracker tier={userTier} />
 
-          {/* Subscription Management */}
-          <SubscriptionCard />
+          {/* Dynamic panel ordering based on user tier */}
+          {userTier === 'free' ? (
+            // Free user layout: Free panels first, then Pro panels with upgrade prompts
+            // This improves UX by showing available content first, then upgrade opportunities
+            <>
+              {/* Free panels - Available to all users */}
+              <CategoryScoresCard />
+              <WebVitalsCard />
+              <BestPracticesCard />
+              <AccessibilityCard />
+              <OpportunitiesCard />
 
-          {/* Basic Panels - Available to all users */}
-          <CategoryScoresCard />
-          <WebVitalsCard />
-          
-          {/* Performance Metrics - Limited for Free users */}
-          <FeatureGate 
-            feature="performanceMetrics" 
-            tier={userTier}
-            fallback={<HistoricalDataUpgradePrompt />}
-          >
-            <PerformanceMetricsCard />
-          </FeatureGate>
+              {/* Visual separator for Pro features */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-muted-foreground/20" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Pro Features
+                  </span>
+                </div>
+              </div>
 
-          {/* AI Insights - Pro only */}
-          <FeatureGate feature="aiInsights" tier={userTier}>
-            <AIInsightsCard />
-          </FeatureGate>
+              {/* Pro panels with upgrade prompts - Show what's available with Pro */}
+              <FeatureGate 
+                feature="performanceMetrics" 
+                tier={userTier}
+                fallback={<HistoricalDataUpgradePrompt />}
+              >
+                <PerformanceMetricsCard />
+              </FeatureGate>
 
-          {/* Basic Analysis Panels - Available to all users */}
-          <BestPracticesCard />
-          <AccessibilityCard />
+              <FeatureGate feature="aiInsights" tier={userTier}>
+                <AIInsightsCard />
+              </FeatureGate>
 
-          {/* Detailed Recommendations - Pro only */}
-          <FeatureGate 
-            feature="detailedRecommendations" 
-            tier={userTier}
-            fallback={
-              <UpgradePrompt
-                title="Detailed Recommendations"
-                description="Get comprehensive recommendations with implementation steps and priority rankings"
-                features={[
-                  "Priority-based recommendations",
-                  "Implementation step-by-step guides",
-                  "Impact assessment for each recommendation",
-                  "Custom optimization strategies",
-                  "Historical performance context",
-                  "Advanced filtering and sorting"
-                ]}
-              />
-            }
-          >
-            <RecommendationsCard />
-          </FeatureGate>
+              <FeatureGate 
+                feature="detailedRecommendations" 
+                tier={userTier}
+                fallback={
+                  <UpgradePrompt
+                    title="Detailed Recommendations"
+                    description="Get comprehensive recommendations with implementation steps and priority rankings"
+                    showFeatures={false}
+                  />
+                }
+              >
+                <RecommendationsCard />
+              </FeatureGate>
 
-          <OpportunitiesCard />
+              <FeatureGate feature="exportReports" tier={userTier}>
+                <ExportReportCard />
+              </FeatureGate>
+            </>
+          ) : (
+            // Pro user layout - Keep current order for consistency
+            // Pro users see all panels in the original order for familiarity
+            <>
+              {/* Basic Panels - Available to all users */}
+              <CategoryScoresCard />
+              <WebVitalsCard />
+              
+              {/* Performance Metrics - Pro users have full access */}
+              <PerformanceMetricsCard />
 
-          {/* Export Reports - Pro only */}
-          <FeatureGate feature="exportReports" tier={userTier}>
-            <ExportReportCard />
-          </FeatureGate>
+              {/* AI Insights - Pro only */}
+              <AIInsightsCard />
+
+              {/* Basic Analysis Panels - Available to all users */}
+              <BestPracticesCard />
+              <AccessibilityCard />
+
+              {/* Detailed Recommendations - Pro only */}
+              <RecommendationsCard />
+
+              <OpportunitiesCard />
+
+              {/* Export Reports - Pro only */}
+              <ExportReportCard />
+            </>
+          )}
         </div>
       </div>
     </div>

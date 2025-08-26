@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useDashboard } from "@/context/DashboardContext";
 import { useAuth } from "@/context/AuthContext";
 import FeatureGate from "@/components/payments/FeatureGate";
+import { AIInsightsUpgradePrompt } from "@/components/payments/UpgradePrompt";
 import {
   Brain,
   Download,
@@ -26,7 +27,9 @@ import {
   Play,
   CheckSquare,
   Square,
+  Crown,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 // Enhanced types for AI insights
 interface AIInsight {
@@ -310,46 +313,13 @@ export default function AIInsightsCard() {
   );
   const lowPriorityInsights = insights.filter((i) => i.severity === "Low");
 
-  // Pro user access control
-  if (user?.tier !== 'pro') {
-    return (
-      <FeatureGate
-        feature="aiInsights"
-        tier={user?.tier as 'free' | 'pro'}
-        fallback={
-          <Card>
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <Brain className="w-6 h-6 text-blue-600" />
-                <CardTitle className="text-2xl font-bold">
-                  AI-Powered Insights
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                  Pro Feature
-                </h3>
-                <p className="text-gray-500 mb-4">
-                  Get AI-powered insights with historical context and actionable recommendations.
-                </p>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  Upgrade to Pro
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        }
-      >
-        <div>This content is only visible to Pro users</div>
-      </FeatureGate>
-    );
-  }
-
   return (
-    <Card>
+    <FeatureGate
+      feature="aiInsights"
+      tier={user?.tier as 'free' | 'pro'}
+      fallback={<AIInsightsUpgradePrompt />}
+    >
+      <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -683,5 +653,6 @@ export default function AIInsightsCard() {
         )}
       </CardContent>
     </Card>
+    </FeatureGate>
   );
 }

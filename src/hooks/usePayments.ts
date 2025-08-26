@@ -33,6 +33,8 @@ export function usePayments() {
     setState({ loading: true, error: null });
 
     try {
+      console.log('Sending checkout request with tier:', tier);
+      
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: {
@@ -42,8 +44,10 @@ export function usePayments() {
       });
 
       const data = await response.json();
+      console.log('Checkout response:', { status: response.status, data });
 
       if (!response.ok) {
+        console.error('Checkout request failed:', data);
         throw new Error(data.error || 'Failed to create checkout session');
       }
 
