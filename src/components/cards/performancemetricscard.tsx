@@ -15,6 +15,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Button } from "@/components/ui/button";
 import { useDashboard } from "@/context/DashboardContext";
+import { PlatformStatus } from "@/components/ui/platform-status";
 
 // Type definition for history entries
 type HistoryEntry = {
@@ -27,7 +28,7 @@ type HistoryEntry = {
 
 export default function PerformanceMetricsCard() {
   // Get data from DashboardContext
-  const { performanceHistory, currentUrl, isLoading, refreshData } = useDashboard();
+  const { performanceHistory, platforms, currentUrl, isLoading, refreshData } = useDashboard();
   
   // Timeline state for custom date ranges
   const [timeline, setTimeline] = useState<HistoryEntry[]>([]);

@@ -39,6 +39,21 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 OPENAI_API_KEY="your-openai-api-key"
 ```
 
+## Multi-Platform Testing Configuration
+```env
+# Lighthouse (enabled by default, set to 'false' to disable)
+ENABLE_LIGHTHOUSE="true"
+
+# PageSpeed Insights API
+ENABLE_PAGESPEED="false" # Set to 'true' to enable
+PAGESPEED_API_KEY="your-pagespeed-api-key"
+
+# WebPageTest API
+ENABLE_WEBPAGETEST="false" # Set to 'true' to enable
+WEBPAGETEST_API_KEY="your-webpagetest-api-key" # Optional for free tier
+WEBPAGETEST_ENDPOINT="https://www.webpagetest.org" # Optional, defaults to public instance
+```
+
 ## PageSpeed Insights API
 ```env
 PAGESPEED_API_KEY="your-pagespeed-api-key"

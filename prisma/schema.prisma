@@ -46,10 +46,23 @@ model User {
   currentPeriodEnd  DateTime?
   cancelAtPeriodEnd Boolean   @default(false)
   
+  // Usage tracking fields
+  analysesUsed      Int       @default(0)
+  aiInsightsUsed    Int       @default(0)
+  exportReportsUsed Int       @default(0)
+  scheduledReportsUsed Int    @default(0)
+  
+  // Scheduled reports configuration
+  scheduledReportsEnabled Boolean @default(false)
+  scheduledReportsFrequency String? // 'weekly', 'monthly'
+  scheduledReportsEmail String?
+  scheduledReportsUrls Json? // Array of URLs to include in reports
+  
   // Relations
   auditResults      AuditResult[]
   history           History[]
   aiInsights        AIInsight[]
+  userActions       UserAction[]
   invoices          Invoice[]
   
   @@index([email])
@@ -77,19 +90,43 @@ model History {
   id              Int              @id @default(autoincrement())
   url             String
   analyzedAt      DateTime         @default(now())
+  
+  // Category Scores (Lighthouse categories)
   performance     Int
   accessibility   Int
   seo             Int
   bestPractices   Int
+  
+  // Web Vitals
   lcp             Float?
   cls             Float?
   inp             Float?
-
-  details         HistoryDetails?
+  fcp             Float?
+  ttfb            Float?
   
-  // Add user relation
+  // Performance Metrics (additional metrics)
+  speedIndex     Float?
+  totalBlockingTime Float?
+  largestContentfulPaint Float?
+  cumulativeLayoutShift Float?
+  firstInputDelay Float?
+  
+  // User relation
   userId          String?
   user            User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Site identification for multi-site tracking
+  siteId          String? // Optional site identifier for grouping
+  
+  // Relations
+  details         HistoryDetails?
+  aiInsights      AIInsight[] // Link AI insights to this analysis
+  analysisData    AnalysisData? // Link to comprehensive analysis data
+  
+  @@index([url])
+  @@index([userId])
+  @@index([analyzedAt])
+  @@index([siteId])
 }
 
 model HistoryDetails {
@@ -114,14 +151,85 @@ model AIInsight {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  // Add user relation
+  // Enhanced fields for historical context
+  historicalContext String? // JSON string for historical context
+  platformSpecific Boolean @default(false)
+  platforms        Json?   // Array of platform names
+  implementationSteps Json? // Array of implementation steps
+  expectedTimeline String?
+  costBenefit      String?
+
+  // Relations
   userId          String?
   user            User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Link to specific analysis
+  historyId       Int?
+  history         History? @relation(fields: [historyId], references: [id], onDelete: Cascade)
+
+  // User actions on this insight
+  userActions     UserAction[]
 
   @@index([url])
   @@index([status])
   @@index([severity])
   @@index([category])
+  @@index([historyId])
+  @@index([userId])
+}
+
+// New model for tracking user actions on AI insights
+model UserAction {
+  id          String   @id @default(cuid())
+  userId      String
+  insightId   String
+  action      String   // 'applied', 'ignored'
+  impact      String?  // Optional impact assessment
+  url         String   // URL for context
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  insight     AIInsight @relation(fields: [insightId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([insightId])
+  @@index([url])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// New model for storing comprehensive analysis data
+model AnalysisData {
+  id              String   @id @default(cuid())
+  historyId       Int      @unique
+  history         History  @relation(fields: [historyId], references: [id], onDelete: Cascade)
+  
+  // Opportunities data
+  opportunities   Json     // Array of opportunity objects
+  
+  // Recommendations data  
+  recommendations Json     // Array of recommendation objects
+  
+  // Accessibility issues
+  accessibility   Json     // Array of accessibility issues
+  
+  // Best practices violations
+  bestPractices   Json     // Array of best practices issues
+  
+  // SEO issues
+  seo             Json     // Array of SEO issues
+  
+  // Performance details
+  performanceDetails Json  // Detailed performance metrics
+  
+  // Platform information
+  platforms       Json     // Array of platforms used for analysis
+  consolidatedData Json    // Full consolidated data from all platforms
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([historyId])
 }
 
 // Invoice model for billing history

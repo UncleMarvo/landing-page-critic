@@ -16,7 +16,14 @@ import {
   Settings,
   ChevronDown,
   Globe,
+  Crown,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import UpgradePrompt, { 
+  AIInsightsUpgradePrompt, 
+  HistoricalDataUpgradePrompt, 
+  ExportUpgradePrompt 
+} from "@/components/payments/UpgradePrompt";
 
 /* Card Components */
 import BestPracticesCard from "@/components/cards/bestpracticescard";
@@ -222,6 +229,17 @@ function DashboardContent({
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
+        {/* Upgrade Banner for Free Users */}
+        {userTier === 'free' && (
+          <div className="mb-6">
+            <UpgradePrompt 
+              variant="compact"
+              title="Unlock Full Dashboard Access"
+              description="Upgrade to Pro for unlimited analyses, AI insights, and advanced features"
+            />
+          </div>
+        )}
+
         {/* Stacked Layout - All panels in single column */}
         <div className="space-y-6">
           {/* Usage Tracker */}
@@ -230,26 +248,53 @@ function DashboardContent({
           {/* Subscription Management */}
           <SubscriptionCard />
 
+          {/* Basic Panels - Available to all users */}
           <CategoryScoresCard />
-          
           <WebVitalsCard />
           
-          <PerformanceMetricsCard />
+          {/* Performance Metrics - Limited for Free users */}
+          <FeatureGate 
+            feature="performanceMetrics" 
+            tier={userTier}
+            fallback={<HistoricalDataUpgradePrompt />}
+          >
+            <PerformanceMetricsCard />
+          </FeatureGate>
 
-          {/* AI Insights - Gated for Pro users */}
+          {/* AI Insights - Pro only */}
           <FeatureGate feature="aiInsights" tier={userTier}>
             <AIInsightsCard />
           </FeatureGate>
 
+          {/* Basic Analysis Panels - Available to all users */}
           <BestPracticesCard />
-          
           <AccessibilityCard />
 
-          <RecommendationsCard />
+          {/* Detailed Recommendations - Pro only */}
+          <FeatureGate 
+            feature="detailedRecommendations" 
+            tier={userTier}
+            fallback={
+              <UpgradePrompt
+                title="Detailed Recommendations"
+                description="Get comprehensive recommendations with implementation steps and priority rankings"
+                features={[
+                  "Priority-based recommendations",
+                  "Implementation step-by-step guides",
+                  "Impact assessment for each recommendation",
+                  "Custom optimization strategies",
+                  "Historical performance context",
+                  "Advanced filtering and sorting"
+                ]}
+              />
+            }
+          >
+            <RecommendationsCard />
+          </FeatureGate>
 
           <OpportunitiesCard />
 
-          {/* Export Reports - Gated for Pro users */}
+          {/* Export Reports - Pro only */}
           <FeatureGate feature="exportReports" tier={userTier}>
             <ExportReportCard />
           </FeatureGate>

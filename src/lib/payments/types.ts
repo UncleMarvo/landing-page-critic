@@ -62,7 +62,11 @@ export interface TierConfig {
     monthlyAnalyses?: number;
     aiInsights?: number;
     exportReports?: number;
-    priority?: boolean;
+    scheduledReports?: number;
+    prioritySupport?: boolean;
+    customReports?: boolean;
+    apiAccess?: boolean;
+    teamCollaboration?: boolean;
   };
 }
 
@@ -89,11 +93,15 @@ export interface SubscriptionUpdateData {
 export interface FeatureAccess {
   canAccessAIInsights: boolean;
   canExportReports: boolean;
+  canAccessScheduledReports: boolean;
   canAccessAdvancedMetrics: boolean;
   canAccessPrioritySupport: boolean;
+  canAccessAPI: boolean;
+  canAccessTeamCollaboration: boolean;
   monthlyAnalysesLimit: number;
   aiInsightsLimit: number;
   exportReportsLimit: number;
+  scheduledReportsLimit: number;
 }
 
 export interface UserSubscription {

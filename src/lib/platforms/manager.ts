@@ -3,11 +3,22 @@ import { fetchMetrics as fetchLighthouseMetrics } from './lighthouse';
 import { fetchMetrics as fetchPageSpeedMetrics } from './pagespeed';
 import { fetchMetrics as fetchWebPageTestMetrics } from './webpagetest';
 
-// Load platform configuration from environment variables
+// Enhanced platform status interface
+export interface PlatformStatus {
+  name: string;
+  key: string;
+  enabled: boolean;
+  configured: boolean;
+  status: 'enabled' | 'disabled' | 'error' | 'loading' | 'not-configured';
+  lastUsed?: string;
+  error?: string;
+  config?: PlatformConfig;
+}
+
+// Load platform configuration from environment variables with validation
 export function loadPlatformsConfig(): PlatformsConfig {
-  return {
+  const config: PlatformsConfig = {
     lighthouse: {
-      // Enable Lighthouse by default if no env var is set, or if explicitly set to 'true'
       enabled: process.env.ENABLE_LIGHTHOUSE !== 'false',
       timeout: 30000, // 30 seconds
       retries: 1,
@@ -26,9 +37,36 @@ export function loadPlatformsConfig(): PlatformsConfig {
       retries: 30,
     },
   };
+
+  // Validate configurations
+  validatePlatformConfigs(config);
+
+  return config;
 }
 
-// Fetch metrics from all enabled platforms
+// Validate platform configurations
+function validatePlatformConfigs(config: PlatformsConfig) {
+  const errors: string[] = [];
+
+  // Validate PageSpeed configuration
+  if (config.pagespeed.enabled && !config.pagespeed.apiKey) {
+    errors.push('PageSpeed Insights is enabled but no API key is provided');
+  }
+
+  // Validate WebPageTest configuration
+  if (config.webpagetest.enabled && !config.webpagetest.apiKey) {
+    console.warn('WebPageTest is enabled without API key - using free tier');
+  }
+
+  // Log validation results
+  if (errors.length > 0) {
+    console.error('Platform configuration errors:', errors);
+  }
+
+  return errors.length === 0;
+}
+
+// Fetch metrics from all enabled platforms with enhanced error handling
 export async function fetchAllPlatformMetrics(url: string): Promise<PlatformData[]> {
   const config = loadPlatformsConfig();
   console.log('Platform configuration:', {
@@ -52,6 +90,13 @@ export async function fetchAllPlatformMetrics(url: string): Promise<PlatformData
   if (config.pagespeed.enabled) {
     if (!config.pagespeed.apiKey) {
       console.warn('PageSpeed Insights enabled but no API key provided');
+      results.push({
+        platform: 'pagespeed',
+        url,
+        timestamp: new Date().toISOString(),
+        metrics: [],
+        error: 'API key required for PageSpeed Insights',
+      });
     } else {
       console.log('Adding PageSpeed to fetch queue');
       fetchPromises.push(fetchPageSpeedMetrics(url, config.pagespeed));
@@ -142,6 +187,43 @@ export async function fetchAllPlatformMetrics(url: string): Promise<PlatformData
   });
 
   return results;
+}
+
+// Get platform status information
+export function getPlatformStatuses(): PlatformStatus[] {
+  const config = loadPlatformsConfig();
+  
+  return [
+    {
+      name: 'Lighthouse',
+      key: 'lighthouse',
+      enabled: config.lighthouse.enabled,
+      configured: true, // Lighthouse doesn't require API key
+      status: config.lighthouse.enabled ? 'enabled' : 'disabled',
+      config: config.lighthouse,
+    },
+    {
+      name: 'PageSpeed Insights',
+      key: 'pagespeed',
+      enabled: config.pagespeed.enabled,
+      configured: !!config.pagespeed.apiKey,
+      status: config.pagespeed.enabled 
+        ? (config.pagespeed.apiKey ? 'enabled' : 'not-configured')
+        : 'disabled',
+      config: config.pagespeed,
+      error: config.pagespeed.enabled && !config.pagespeed.apiKey 
+        ? 'API key required' 
+        : undefined,
+    },
+    {
+      name: 'WebPageTest',
+      key: 'webpagetest',
+      enabled: config.webpagetest.enabled,
+      configured: true, // WebPageTest can work without API key
+      status: config.webpagetest.enabled ? 'enabled' : 'disabled',
+      config: config.webpagetest,
+    },
+  ];
 }
 
 // Consolidate metrics from multiple platforms

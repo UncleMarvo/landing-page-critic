@@ -13,6 +13,13 @@ export interface AIInsight {
   priority: number;
   createdAt: Date;
   status: 'pending' | 'applied' | 'ignored';
+  // New fields for enhanced insights
+  historicalContext?: string;
+  platformSpecific?: boolean;
+  platforms?: string[];
+  implementationSteps?: string[];
+  expectedTimeline?: string;
+  costBenefit?: string;
 }
 
 export interface InsightRequest {
@@ -24,7 +31,22 @@ export interface InsightRequest {
   accessibility: any[];
   bestPractices: any[];
   performanceHistory: any[];
-  platforms?: string[]; // New field for multi-platform data
+  platforms?: string[]; // Multi-platform data
+  // New fields for historical context
+  previousInsights?: AIInsight[];
+  userActions?: Array<{
+    insightId: string;
+    action: 'applied' | 'ignored';
+    date: Date;
+    impact?: string;
+  }>;
+  siteHistory?: Array<{
+    date: Date;
+    performance: number;
+    accessibility: number;
+    seo: number;
+    bestPractices: number;
+  }>;
 }
 
 export interface LLMConfig {
@@ -40,7 +62,7 @@ const DEFAULT_CONFIG: LLMConfig = {
   provider: 'openai',
   apiKey: process.env.OPENAI_API_KEY || '',
   model: 'gpt-4o-mini',
-  maxTokens: 2000,
+  maxTokens: 3000, // Increased for more detailed insights
   temperature: 0.3,
 };
 
@@ -60,22 +82,81 @@ function generateCacheKey(request: InsightRequest): string {
     accessibility: request.accessibility?.length || 0,
     bestPractices: request.bestPractices?.length || 0,
     performanceHistory: request.performanceHistory?.length || 0,
+    platforms: request.platforms?.join(',') || '',
+    previousInsights: request.previousInsights?.length || 0,
+    userActions: request.userActions?.length || 0,
   });
   return `${request.url}-${Buffer.from(dataHash).toString('base64').slice(0, 16)}`;
 }
 
 /**
- * Format metrics data for AI analysis
+ * Format metrics data for AI analysis with historical context
  */
 function formatMetricsForAI(request: InsightRequest): string {
-  const { url, webVitals, categories, opportunities, recommendations, accessibility, bestPractices, performanceHistory, platforms } = request;
+  const { 
+    url, 
+    webVitals, 
+    categories, 
+    opportunities, 
+    recommendations, 
+    accessibility, 
+    bestPractices, 
+    performanceHistory, 
+    platforms,
+    previousInsights,
+    userActions,
+    siteHistory
+  } = request;
   
   let formattedData = `Website Analysis for: ${url}\n\n`;
   
-  // Data Sources (if available)
+  // Data Sources (multi-platform)
   if (platforms && platforms.length > 0) {
-    formattedData += `Data Sources: ${platforms.join(', ')}\n\n`;
+    formattedData += `Data Sources: ${platforms.join(', ')}\n`;
+    formattedData += `Multi-platform analysis available: ${platforms.length > 1 ? 'Yes' : 'No'}\n\n`;
   }
+  
+  // Historical Context
+  if (siteHistory && siteHistory.length > 0) {
+    formattedData += `Performance History (Last ${siteHistory.length} analyses):\n`;
+    const recent = siteHistory.slice(-5); // Last 5 entries
+    recent.forEach(entry => {
+      formattedData += `- ${new Date(entry.date).toLocaleDateString()}: Performance ${entry.performance}%, Accessibility ${entry.accessibility}%, SEO ${entry.seo}%, Best Practices ${entry.bestPractices}%\n`;
+    });
+    
+    // Calculate trends
+    if (recent.length >= 2) {
+      const first = recent[0];
+      const last = recent[recent.length - 1];
+      const performanceTrend = last.performance - first.performance;
+      const accessibilityTrend = last.accessibility - first.accessibility;
+      const seoTrend = last.seo - first.seo;
+      
+      formattedData += `Trends: Performance ${performanceTrend > 0 ? '+' : ''}${performanceTrend.toFixed(1)}%, Accessibility ${accessibilityTrend > 0 ? '+' : ''}${accessibilityTrend.toFixed(1)}%, SEO ${seoTrend > 0 ? '+' : ''}${seoTrend.toFixed(1)}%\n`;
+    }
+    formattedData += '\n';
+  }
+  
+  // Previous Insights and User Actions
+  if (previousInsights && previousInsights.length > 0) {
+    formattedData += `Previous AI Insights (${previousInsights.length} total):\n`;
+    const applied = previousInsights.filter(i => i.status === 'applied');
+    const ignored = previousInsights.filter(i => i.status === 'ignored');
+    const pending = previousInsights.filter(i => i.status === 'pending');
+    
+    formattedData += `- Applied: ${applied.length}, Ignored: ${ignored.length}, Pending: ${pending.length}\n`;
+    
+    if (applied.length > 0) {
+      formattedData += `Recently Applied Insights:\n`;
+      applied.slice(-3).forEach(insight => {
+        formattedData += `- ${insight.title} (${insight.category}, Priority: ${insight.priority})\n`;
+      });
+    }
+    formattedData += '\n';
+  }
+  
+  // Current Metrics
+  formattedData += `Current Analysis Results:\n\n`;
   
   // Web Vitals
   if (webVitals && webVitals.length > 0) {
@@ -131,42 +212,37 @@ function formatMetricsForAI(request: InsightRequest): string {
     formattedData += '\n';
   }
   
-  // Performance History
-  if (performanceHistory && performanceHistory.length > 0) {
-    formattedData += `Performance History (Last ${performanceHistory.length} entries):\n`;
-    const recent = performanceHistory.slice(-3);
-    recent.forEach(entry => {
-      formattedData += `- ${new Date(entry.analyzedAt).toLocaleDateString()}: Performance ${entry.performance}%, Accessibility ${entry.accessibility}%, SEO ${entry.seo}%\n`;
-    });
-    formattedData += '\n';
-  }
-  
   return formattedData;
 }
 
 /**
- * Generate AI prompt for insights
+ * Generate enhanced AI prompt for insights with historical context
  */
 function generateAIPrompt(metricsData: string): string {
-  return `You are an expert web performance analyst. Analyze the following website metrics and provide actionable insights.
+  return `You are an expert web performance analyst with deep knowledge of historical optimization patterns. Analyze the following website metrics and provide actionable insights with historical context.
 
 ${metricsData}
 
-Please provide 5-8 specific, actionable insights with the following format for each:
+Please provide 5-8 specific, actionable insights with the following enhanced format for each:
 
 1. **Title**: Clear, concise title
-2. **Description**: Plain English explanation of the issue and how to fix it (avoid technical jargon)
+2. **Description**: Plain English explanation of the issue and how to fix it
 3. **Severity**: High, Medium, or Low based on impact
 4. **Category**: Performance, Accessibility, SEO, Best Practices, or Web Vitals
-5. **Estimated Impact**: Brief description of expected improvement
+5. **Estimated Impact**: Brief description of expected improvement with specific metrics
 6. **Priority**: Number 1-10 (10 being highest priority)
+7. **Historical Context**: Brief note about how this type of issue typically performs over time
+8. **Implementation Steps**: 2-3 specific steps to implement the fix
+9. **Expected Timeline**: How long implementation typically takes (hours/days/weeks)
+10. **Cost Benefit**: Brief cost-benefit analysis (low/medium/high effort vs impact)
 
-Focus on:
-- Practical, implementable suggestions
-- Clear, non-technical language
-- Specific actions website owners can take
-- Prioritizing issues that will have the biggest impact
-- Avoiding buzzwords and marketing speak
+Consider:
+- Historical performance trends and patterns
+- Previous user actions on similar insights
+- Multi-platform data consistency
+- Practical implementation feasibility
+- Real-world impact based on similar optimizations
+- Avoiding duplicate or conflicting recommendations
 
 Return the response as a JSON array with this structure:
 [
@@ -176,13 +252,17 @@ Return the response as a JSON array with this structure:
     "severity": "High|Medium|Low",
     "category": "Performance|Accessibility|SEO|Best Practices|Web Vitals",
     "estimatedImpact": "string",
-    "priority": number
+    "priority": number,
+    "historicalContext": "string",
+    "implementationSteps": ["step1", "step2", "step3"],
+    "expectedTimeline": "string",
+    "costBenefit": "string"
   }
 ]`;
 }
 
 /**
- * Parse AI response into structured insights
+ * Parse AI response into structured insights with enhanced fields
  */
 function parseAIResponse(response: string): AIInsight[] {
   try {
@@ -206,6 +286,13 @@ function parseAIResponse(response: string): AIInsight[] {
       priority: typeof insight.priority === 'number' ? Math.min(Math.max(insight.priority, 1), 10) : 5,
       createdAt: new Date(),
       status: 'pending' as const,
+      // Enhanced fields
+      historicalContext: insight.historicalContext || null,
+      platformSpecific: insight.platformSpecific || false,
+      platforms: insight.platforms || [],
+      implementationSteps: insight.implementationSteps || [],
+      expectedTimeline: insight.expectedTimeline || 'Unknown',
+      costBenefit: insight.costBenefit || 'Medium effort, medium impact',
     }));
   } catch (error) {
     console.error('Error parsing AI response:', error);
@@ -221,6 +308,10 @@ function parseAIResponse(response: string): AIInsight[] {
       priority: 1,
       createdAt: new Date(),
       status: 'pending' as const,
+      historicalContext: 'Error occurred during analysis',
+      implementationSteps: [],
+      expectedTimeline: 'Unknown',
+      costBenefit: 'No impact due to error',
     }];
   }
 }

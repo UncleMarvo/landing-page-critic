@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { useDashboard } from "@/context/DashboardContext";
 import { Activity, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
+import { PlatformStatus } from "@/components/ui/platform-status";
 
 // Type definition for Web Vitals data
 type WebVitalsPanelProps = {
@@ -72,7 +73,12 @@ const getMetricStatus = (metricId: string, value: number): string => {
 
 export default function WebVitalsCard() {
   // Get data from DashboardContext
-  const { webVitalsData, isLoading, refreshData } = useDashboard();
+  const {
+    webVitalsData,
+    platforms,
+    isLoading,
+    refreshData,
+  } = useDashboard();
   
   // Handle loading state
   if (isLoading) {
@@ -187,105 +193,114 @@ export default function WebVitalsCard() {
     <Card className="card-hover">
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle className="h4 flex items-center space-x-2">
-            <Activity className="h-5 w-5 text-primary" />
-            <span>Web Vitals</span>
-          </CardTitle>
-          <Button 
-            onClick={refreshData}
-            disabled={isLoading}
-            size="sm"
-            variant="outline"
-            className="btn-secondary"
-          >
-            {isLoading ? "Refreshing..." : "Refresh"}
-          </Button>
+          <div className="flex items-center space-x-2">
+            <Activity className="w-6 h-6 text-blue-600" />
+            <CardTitle className="text-2xl font-bold">Web Vitals</CardTitle>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              onClick={refreshData}
+              disabled={isLoading}
+              size="sm"
+              variant="outline"
+            >
+              {isLoading ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Chart Section */}
-        {chartData.length > 0 && (
-          <div className="space-y-4">
-            <h4 className="h5 text-foreground">Performance Overview</h4>
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fontSize: 12 }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                  />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px',
-                    }}
-                    formatter={(value: any, name: any, props: any) => [
-                      `${value}${props.payload.unit || ''}`,
-                      props.payload.name
-                    ]}
-                  />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={getBarColor(entry.level)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+        {platforms && platforms.length > 0 && (
+          <div className="mt-2">
+            <PlatformStatus platforms={platforms} compact />
           </div>
         )}
-
-        {/* Metrics Grid */}
-        <div className="space-y-4">
-          <h4 className="h5 text-foreground">Detailed Metrics</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mergedData.map((metric) => {
-              // Determine status based on metric value
-              const status = metric.value !== undefined ? getMetricStatus(metric.id, metric.value) : 'unknown';
-              const statusInfo = getStatusInfo(status);
-              const StatusIcon = statusInfo.icon;
-              
-              return (
-                <div 
-                  key={metric.id}
-                  className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-sm ${statusInfo.bgColor}`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <h5 className="text-sm font-medium text-foreground leading-tight">
-                      {metric.title}
-                    </h5>
-                    <StatusIcon className={`h-4 w-4 ${statusInfo.color} flex-shrink-0`} />
-                  </div>
-                  
-                  {metric.value !== undefined ? (
-                    <div className="space-y-1">
-                      <p className="text-2xl font-bold text-foreground">
-                        {metric.value}
-                        <span className="text-sm font-normal text-muted-foreground ml-1">
-                          {metric.unit}
-                        </span>
-                      </p>
-                      <div className="flex items-center space-x-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color}`}>
-                          {status.replace('-', ' ')}
-                        </span>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Main Content - Details and Chart in same row */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left Side - Detailed Metrics */}
+          <div className="flex-1 space-y-4">
+            <h4 className="h5 text-foreground">Detailed Metrics</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {mergedData.map((metric) => {
+                // Determine status based on metric value
+                const status = metric.value !== undefined ? getMetricStatus(metric.id, metric.value) : 'unknown';
+                const statusInfo = getStatusInfo(status);
+                const StatusIcon = statusInfo.icon;
+                
+                return (
+                  <div 
+                    key={metric.id}
+                    className={`p-4 rounded-lg border transition-all duration-200 hover:shadow-sm ${statusInfo.bgColor}`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <h5 className="text-sm font-medium text-foreground leading-tight">
+                        {metric.title}
+                      </h5>
+                      <StatusIcon className={`h-4 w-4 ${statusInfo.color} flex-shrink-0`} />
+                    </div>
+                    
+                    {metric.value !== undefined ? (
+                      <div className="space-y-1">
+                        <p className="text-2xl font-bold text-foreground">
+                          {metric.value}
+                          <span className="text-sm font-normal text-muted-foreground ml-1">
+                            {metric.unit}
+                          </span>
+                        </p>
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-xs font-medium px-2 py-1 rounded-full ${statusInfo.bgColor} ${statusInfo.color}`}>
+                            {status.replace('-', ' ')}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <p className="text-lg text-muted-foreground">No data</p>
-                      <p className="text-xs text-muted-foreground">Metric not available</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-lg text-muted-foreground">No data</p>
+                        <p className="text-xs text-muted-foreground">Metric not available</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Right Side - Chart */}
+          {chartData.length > 0 && (
+            <div className="flex-1 space-y-4">
+              <h4 className="h5 text-foreground">Performance Overview</h4>
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '8px',
+                      }}
+                      formatter={(value: any, name: any, props: any) => [
+                        `${value}${props.payload.unit || ''}`,
+                        props.payload.name
+                      ]}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={getBarColor(entry.level)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Summary */}

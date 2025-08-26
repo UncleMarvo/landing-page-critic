@@ -20,7 +20,7 @@ export default function UrlInput({ className = "" }: UrlInputProps) {
 
   return (
     <div className={`flex flex-col space-y-2 ${className}`}>
-      <h3 className="text-lg font-semibold">Analyze URL</h3>
+      <h3 className="text-sm font-semibold">Analyze URL</h3>
       <form onSubmit={handleSubmit} className="flex space-x-2">
         <input
           type="url"

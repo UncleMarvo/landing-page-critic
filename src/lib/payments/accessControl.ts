@@ -2,64 +2,162 @@ import { Tier, FeatureAccess } from './types';
 import { getTierConfig } from './config';
 
 // Server-side access control functions
-export function getFeatureAccess(tier: Tier): FeatureAccess {
+export function getFeatureAccess(tier: Tier, feature?: string): { hasAccess: boolean; limit?: number; used?: number; remaining?: number } {
   const tierConfig = getTierConfig(tier);
   
   if (!tierConfig) {
-    // Default to most restrictive access
-    return {
-      canAccessAIInsights: false,
-      canExportReports: false,
-      canAccessAdvancedMetrics: false,
-      canAccessPrioritySupport: false,
-      canAccessAPI: false,
-      canAccessTeamCollaboration: false,
-      monthlyAnalysesLimit: 0,
-      aiInsightsLimit: 0,
-      exportReportsLimit: 0,
-    };
+    return { hasAccess: false };
   }
 
+  // If a specific feature is requested, return access info for that feature
+  if (feature) {
+    switch (feature) {
+      case 'aiInsights':
+        return { 
+          hasAccess: tier !== 'free',
+          limit: tierConfig.limits.aiInsights || 0
+        };
+      case 'exportReports':
+        return { 
+          hasAccess: tier !== 'free',
+          limit: tierConfig.limits.exportReports || 0
+        };
+      case 'scheduledReports':
+        return { 
+          hasAccess: tier === 'pro',
+          limit: tierConfig.limits.scheduledReports || 0
+        };
+      case 'advancedMetrics':
+        return { hasAccess: tier === 'pro' };
+      case 'historicalData':
+        return { hasAccess: tier === 'pro' };
+      case 'performanceMetrics':
+        return { hasAccess: tier === 'pro' };
+      case 'detailedRecommendations':
+        return { hasAccess: tier === 'pro' };
+      case 'multipleSiteTracking':
+        return { hasAccess: tier === 'pro' };
+      case 'prioritySupport':
+        return { hasAccess: tierConfig.limits.prioritySupport || false };
+      case 'apiAccess':
+        return { hasAccess: tierConfig.limits.apiAccess || false };
+      case 'teamCollaboration':
+        return { hasAccess: tierConfig.limits.teamCollaboration || false };
+      case 'customReports':
+        return { hasAccess: tierConfig.limits.customReports || false };
+      default:
+        return { hasAccess: false };
+    }
+  }
+
+  // Return full feature access object (for backward compatibility)
   return {
     canAccessAIInsights: tier !== 'free',
     canExportReports: tier !== 'free',
+    canAccessScheduledReports: tier === 'pro',
     canAccessAdvancedMetrics: tier === 'pro',
-    canAccessPrioritySupport: tierConfig.limits.prioritySupport,
-    canAccessAPI: tierConfig.limits.apiAccess,
-    canAccessTeamCollaboration: tierConfig.limits.teamCollaboration,
+    canAccessPrioritySupport: tierConfig.limits.prioritySupport || false,
+    canAccessAPI: tierConfig.limits.apiAccess || false,
+    canAccessTeamCollaboration: tierConfig.limits.teamCollaboration || false,
     monthlyAnalysesLimit: tierConfig.limits.monthlyAnalyses || 0,
     aiInsightsLimit: tierConfig.limits.aiInsights || 0,
     exportReportsLimit: tierConfig.limits.exportReports || 0,
-  };
+    scheduledReportsLimit: tierConfig.limits.scheduledReports || 0,
+  } as any;
 }
 
 // Check if user can access a specific feature
-export function canAccessFeature(tier: Tier, feature: keyof FeatureAccess): boolean {
-  const access = getFeatureAccess(tier);
-  return access[feature] as boolean;
+export function canAccessFeature(tier: Tier, feature: string): boolean {
+  const access = getFeatureAccess(tier, feature);
+  return access.hasAccess;
 }
 
-// Check if user can perform an action based on tier
-export function canPerformAction(tier: Tier, action: string): boolean {
+// Check if user can perform an action based on tier and usage
+export async function canPerformAction(userId: string, action: string): Promise<{ allowed: boolean; limit: number; used: number; remaining: number }> {
+  // Get user from database to check current usage
+  const { prisma } = await import('@/lib/prisma');
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      tier: true,
+      analysesUsed: true,
+      aiInsightsUsed: true,
+      exportReportsUsed: true,
+      scheduledReportsUsed: true
+    }
+  });
+
+  if (!user) {
+    return { allowed: false, limit: 0, used: 0, remaining: 0 };
+  }
+
+  const tierConfig = getTierConfig(user.tier as Tier);
+  if (!tierConfig) {
+    return { allowed: false, limit: 0, used: 0, remaining: 0 };
+  }
+
   switch (action) {
     case 'audit':
-      return true; // All users can do basic audits
-    case 'aiInsight':
-      return tier !== 'free';
-    case 'exportReport':
-      return tier !== 'free';
+      const auditLimit = tierConfig.limits.monthlyAnalyses || 0;
+      const auditUsed = user.analysesUsed || 0;
+      const auditRemaining = auditLimit === -1 ? -1 : Math.max(0, auditLimit - auditUsed);
+      return {
+        allowed: auditLimit === -1 || auditUsed < auditLimit,
+        limit: auditLimit,
+        used: auditUsed,
+        remaining: auditRemaining
+      };
+
+    case 'aiInsights':
+      const aiLimit = tierConfig.limits.aiInsights || 0;
+      const aiUsed = user.aiInsightsUsed || 0;
+      const aiRemaining = aiLimit === -1 ? -1 : Math.max(0, aiLimit - aiUsed);
+      return {
+        allowed: aiLimit === -1 || aiUsed < aiLimit,
+        limit: aiLimit,
+        used: aiUsed,
+        remaining: aiRemaining
+      };
+
+    case 'exportReports':
+      const exportLimit = tierConfig.limits.exportReports || 0;
+      const exportUsed = user.exportReportsUsed || 0;
+      const exportRemaining = exportLimit === -1 ? -1 : Math.max(0, exportLimit - exportUsed);
+      return {
+        allowed: exportLimit === -1 || exportUsed < exportLimit,
+        limit: exportLimit,
+        used: exportUsed,
+        remaining: exportRemaining
+      };
+
+    case 'scheduledReports':
+      const scheduledLimit = tierConfig.limits.scheduledReports || 0;
+      const scheduledUsed = user.scheduledReportsUsed || 0;
+      const scheduledRemaining = scheduledLimit === -1 ? -1 : Math.max(0, scheduledLimit - scheduledUsed);
+      return {
+        allowed: scheduledLimit === -1 || scheduledUsed < scheduledLimit,
+        limit: scheduledLimit,
+        used: scheduledUsed,
+        remaining: scheduledRemaining
+      };
+
     case 'advancedMetrics':
-      return tier === 'pro';
+      return { allowed: user.tier === 'pro', limit: -1, used: 0, remaining: -1 };
+
     case 'prioritySupport':
-      return tier === 'pro';
+      return { allowed: tierConfig.limits.prioritySupport || false, limit: -1, used: 0, remaining: -1 };
+
     case 'apiAccess':
-      return tier === 'pro';
+      return { allowed: tierConfig.limits.apiAccess || false, limit: -1, used: 0, remaining: -1 };
+
     case 'teamCollaboration':
-      return tier === 'pro';
+      return { allowed: tierConfig.limits.teamCollaboration || false, limit: -1, used: 0, remaining: -1 };
+
     case 'customReports':
-      return tier === 'pro';
+      return { allowed: tierConfig.limits.customReports || false, limit: -1, used: 0, remaining: -1 };
+
     default:
-      return false;
+      return { allowed: false, limit: 0, used: 0, remaining: 0 };
   }
 }
 
@@ -269,10 +367,16 @@ export function getUpgradePrompt(feature: string): string {
   const prompts: Record<string, string> = {
     aiInsights: 'Upgrade to Pro to access AI-powered insights and recommendations',
     exportReports: 'Upgrade to Pro to export detailed reports in PDF and CSV formats',
+    scheduledReports: 'Upgrade to Pro to set up automated email reports',
     advancedMetrics: 'Upgrade to Pro to access advanced performance metrics and analytics',
+    historicalData: 'Upgrade to Pro to view historical performance data and trends',
+    performanceMetrics: 'Upgrade to Pro to access detailed performance metrics and historical trends',
+    detailedRecommendations: 'Upgrade to Pro to get comprehensive recommendations with implementation steps',
+    multipleSiteTracking: 'Upgrade to Pro to track multiple websites and compare performance',
     prioritySupport: 'Upgrade to Pro to get priority support and faster response times',
     apiAccess: 'Upgrade to Pro to access our API for automated testing and integrations',
     teamCollaboration: 'Upgrade to Pro to collaborate with your team members',
+    customReports: 'Upgrade to Pro to create custom reports and dashboards',
     unlimitedAnalyses: 'Upgrade to Pro for unlimited monthly analyses',
   };
   

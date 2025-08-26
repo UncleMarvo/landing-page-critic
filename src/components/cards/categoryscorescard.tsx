@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { useDashboard } from "@/context/DashboardContext";
 import { Button } from "@/components/ui/button";
+import { PlatformStatus } from "@/components/ui/platform-status";
 
 type CategoryScoresPanelProps = {
   id: string;
@@ -22,7 +23,7 @@ type CategoryScoresPanelProps = {
 
 export default function CategoryScoresCard() {
   // Get data from DashboardContext
-  const { categoriesData, isLoading, refreshData } = useDashboard();
+  const { categoriesData, platforms, isLoading, refreshData } = useDashboard();
   
   // Use data from context or empty array if no data
   const data = categoriesData || [];
@@ -93,7 +94,12 @@ export default function CategoryScoresCard() {
   return (
     <Card>
       <CardHeader className="flex flex-col md:flex-row md:justify-between md:items-center space-y-2 md:space-y-0">
-        <CardTitle className="text-2xl font-bold">Category Scores</CardTitle>
+        <div className="space-y-2">
+          <CardTitle className="text-2xl font-bold">Category Scores</CardTitle>
+          {platforms && platforms.length > 0 && (
+            <PlatformStatus platforms={platforms} compact />
+          )}
+        </div>
         <Button
           onClick={refreshData}
           disabled={isLoading}

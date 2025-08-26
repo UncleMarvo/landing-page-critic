@@ -20,6 +20,7 @@ export const TIER_CONFIGS: Record<Tier, TierConfig> = {
       monthlyAnalyses: 5,
       aiInsights: 3,
       exportReports: 1,
+      scheduledReports: 0,
       prioritySupport: false,
       customReports: false,
       apiAccess: false,
@@ -48,6 +49,7 @@ export const TIER_CONFIGS: Record<Tier, TierConfig> = {
       monthlyAnalyses: -1, // Unlimited
       aiInsights: -1, // Unlimited
       exportReports: -1, // Unlimited
+      scheduledReports: -1, // Unlimited
       prioritySupport: true,
       customReports: true,
       apiAccess: true,
