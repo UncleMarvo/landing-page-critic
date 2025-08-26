@@ -103,7 +103,7 @@ const AllTheProviders = ({
   resultsData?: typeof mockResultsData
 }) => {
   return (
-    <AuthProvider initialUser={user}>
+    <AuthProvider>
       <ResultsProvider initialResults={resultsData}>
         <DashboardProvider initialData={dashboardData}>
           {children}

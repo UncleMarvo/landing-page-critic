@@ -30,11 +30,17 @@ export default function FeatureGate({
   showUpgradePrompt = true,
   className = "",
 }: FeatureGateProps) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
+  // Use the user's tier from context, fallback to the prop
+  // If still loading, use the prop tier to avoid flashing
+  const userTier = (loading ? tier : (user?.tier || tier)) as Tier;
+
+
+
   // Check if user can access this feature
-  const canAccess = canAccessFeature(tier, feature as any);
+  const canAccess = canAccessFeature(userTier, feature as any);
 
   // If user can access the feature, render children
   if (canAccess) {
